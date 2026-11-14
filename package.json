@@ -1,0 +1,46 @@
+{
+  "name": "dsh-baifan-balance",
+  "version": "1.5.0",
+  "private": false,
+  "description": "Shows the Dabaifan (Baifan API, new-api) relay credit in a composer statistics entry and above the sidebar avatar, with placement, refresh, density, accent and low-balance settings.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "locale/*.json",
+    "cordis.patch.yml",
+    "README.md",
+    "INSTALL.md",
+    "LICENSE",
+    "icon.svg"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "new-api",
+    "relay",
+    "balance",
+    "quota"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}
