@@ -1,9 +1,8 @@
-// dsh-baifan-balance 的浏览器侧：大白饭余额的显示位置与外观都在这里。
-//   - conversation.composer.dock   界面下方统计行里的条目（排在「缓存命中」之后）
-//   - sidebar.footer.action        头像上方的紧凑按钮
-// 两个位置都常驻注册，实际显示与否由设置里的 surface 决定——所以改完设置立刻生效、不用刷新页面。
-// 样式照抄同一行的 activity/usage 统计条目，只使用 --dsw-* 主题 token，深浅色主题都跟着走。
-// 数据来自 Host 侧的 /baifan-balance/summary 与 /baifan-balance/config；浏览器只读，不接触凭据。
+// dsh-baifan-balance 的浏览器侧：大白饭余额的显示位置、口径与外观都在这里。
+//   - sidebar.footer.action       头像上方：固定显示**账户余额**（访问令牌）
+//   - conversation.composer.dock  页面下方：显示**单 key 额度**（api key），没配就回退到账户
+// 两个位置都常驻注册，显示与否由设置里的 surface 决定，改完立刻生效、不用刷新页面。
+// 数据来自 Host 侧的 /baifan-balance/summary（一次返回两个口径）与 /baifan-balance/config。
 window.__ModuleLoader__.load({
 	id: 'dsh-baifan-balance',
 	factory(require) {
@@ -30,15 +29,15 @@ window.__ModuleLoader__.load({
 			'balance.unavailable': '余额不可用',
 			'balance.unconfigured': '未配置',
 			'balance.unlimited': '无限制',
-			'balance.scope.token': '令牌额度',
-			'balance.scope.account': '账户余额',
-			'balance.mark.token': '额度',
-			'balance.mark.account': '账户',
 			'balance.remaining': '剩余',
 			'balance.used': '已用',
 			'balance.total': '总额',
 			'balance.updated': '更新',
 			'balance.low': '低于提醒线',
+			'balance.scope.token': 'key 额度',
+			'balance.scope.account': '账户余额',
+			'balance.mark.token': '额度',
+			'balance.mark.account': '账户',
 		}
 
 		function translate(t, key) {
@@ -106,7 +105,7 @@ window.__ModuleLoader__.load({
 			return value ?? DEFAULT_SETTINGS
 		}
 
-		// ---- 共享读数：一处取，处处同步；设置页点查询也会广播到外面两处 ----
+		// ---- 共享读数：一次取两个口径，处处同步；设置页查询也会广播 ----
 		const summaryStore = { value: undefined, inFlight: undefined, listeners: new Set(), timer: undefined, period: 0 }
 
 		function publishSummary(payload) {
@@ -143,7 +142,6 @@ window.__ModuleLoader__.load({
 			summaryStore.timer = setInterval(() => { void loadSummary(false) }, period)
 		}
 
-		/** 两个入口共用同一份读数与刷新节奏，互相之间不会各查一次。 */
 		function useSummary(refreshSeconds) {
 			const [payload, setPayload] = useState(summaryStore.value)
 			const [busy, setBusy] = useState(false)
@@ -172,56 +170,67 @@ window.__ModuleLoader__.load({
 			}
 		}
 
-		/** 数值说的是什么：这个令牌的额度，还是整个账户的余额。 */
-		function scopeOf(payload, t) {
-			return translate(t, payload?.scope === 'account' ? 'balance.scope.account' : 'balance.scope.token')
+		/** 某个位置该拿哪个口径：头像要账户，下方要 key；缺了就用另一个顶上。 */
+		function pick(payload, surface) {
+			if (payload === undefined) return { reading: undefined, error: undefined }
+			const wantAccount = surface === 'avatar'
+			const preferred = wantAccount ? payload.account : payload.key
+			const fallback = wantAccount ? payload.key : payload.account
+			const error = wantAccount ? payload.accountError : payload.keyError
+			return { reading: preferred ?? fallback, error }
+		}
+
+		/** 数值说的是什么：这个 key 的额度，还是整个账户的余额。 */
+		function scopeOf(reading, t) {
+			return translate(t, reading.scope === 'account' ? 'balance.scope.account' : 'balance.scope.token')
 		}
 
 		/** 把一次读数压成提示语；detail 决定给多少内容。 */
-		function describe(payload, t, detail) {
-			if (payload === undefined) return translate(t, 'balance.loading')
-			if (payload.ok !== true) return String(payload.error)
-			const parts = [payload.site]
-			if (detail !== 'compact') parts.push(scopeOf(payload, t))
-			parts.push(payload.unlimited === true
+		function describe(reading, t, detail) {
+			const parts = [reading.site]
+			if (detail !== 'compact') parts.push(scopeOf(reading, t))
+			parts.push(reading.unlimited === true
 				? translate(t, 'balance.unlimited')
-				: `${translate(t, 'balance.remaining')} ${formatMoney(payload.remaining, payload.currency)}`)
-			if (detail !== 'compact' && payload.unlimited !== true) {
-				parts.push(`${translate(t, 'balance.used')} ${formatMoney(payload.used, payload.currency)}`)
-				parts.push(`${translate(t, 'balance.total')} ${formatMoney(payload.total, payload.currency)}`)
-				if (payload.account !== undefined) parts.push(`${payload.account}${payload.group ? `（${payload.group}）` : ''}`)
-				parts.push(`${translate(t, 'balance.updated')} ${formatClock(payload.checked_at)}`)
+				: `${translate(t, 'balance.remaining')} ${formatMoney(reading.remaining, reading.currency)}`)
+			if (detail !== 'compact' && reading.unlimited !== true) {
+				parts.push(`${translate(t, 'balance.used')} ${formatMoney(reading.used, reading.currency)}`)
+				parts.push(`${translate(t, 'balance.total')} ${formatMoney(reading.total, reading.currency)}`)
+				if (reading.account !== undefined) parts.push(`${reading.account}${reading.group ? `（${reading.group}）` : ''}`)
+				parts.push(`${translate(t, 'balance.updated')} ${formatClock(reading.checked_at)}`)
 			}
-			if (detail === 'detailed' && payload.credential_tail !== undefined) {
-				parts.push(`${payload.credential_source} …${payload.credential_tail}`)
+			if (detail === 'detailed' && reading.credential_tail !== undefined) {
+				parts.push(`${reading.credential_source} …${reading.credential_tail}`)
 			}
 			return parts.join(' · ')
 		}
 
-		/** 一次读数在界面上的所有派生状态，两个位置共用。 */
-		function present(payload, settings, t) {
-			const ok = payload?.ok === true
-			const failed = payload !== undefined && !ok
-			const unconfigured = payload?.code === 'no-credential'
-			const unlimited = ok && payload.unlimited === true
-			const low = ok && !unlimited && settings.lowBalance > 0 && payload.remaining < settings.lowBalance
-			const description = describe(payload, t, settings.detail)
+		/** 一次显示需要的所有派生状态，两个位置共用。 */
+		function present(payload, settings, t, surface) {
+			const { reading, error } = pick(payload, surface)
+			const ok = reading !== undefined
+			const unconfigured = payload !== undefined && payload.ok !== true && payload.configured === false
+			const unlimited = ok && reading.unlimited === true
+			const low = ok && !unlimited && settings.lowBalance > 0 && reading.remaining < settings.lowBalance
+			let description
+			if (ok) description = describe(reading, t, settings.detail)
+			else if (payload === undefined) description = translate(t, 'balance.loading')
+			else description = String(error ?? payload.error ?? translate(t, 'balance.unavailable'))
+
 			return {
 				ok,
-				failed,
 				low,
 				unconfigured,
-				state: failed ? 'error' : (ok ? 'ok' : 'loading'),
+				failed: payload !== undefined && !ok,
+				state: payload === undefined ? 'loading' : (ok ? 'ok' : 'error'),
+				mark: ok ? translate(t, reading.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token') : undefined,
 				amount: ok
-					? (unlimited ? translate(t, 'balance.unlimited') : formatMoney(payload.remaining, payload.currency))
+					? (unlimited ? translate(t, 'balance.unlimited') : formatMoney(reading.remaining, reading.currency))
 					: undefined,
 				idle: payload === undefined
 					? translate(t, 'balance.loading')
 					: translate(t, unconfigured ? 'balance.unconfigured' : 'balance.unavailable'),
-				// 数值旁边亮明口径：这是账户余额，还是某一个 key 的额度。
-				scopeMark: ok ? translate(t, payload.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token') : undefined,
 				used: ok && !unlimited && settings.detail === 'detailed'
-					? `${translate(t, 'balance.used')} ${formatMoney(payload.used, payload.currency)}`
+					? `${translate(t, 'balance.used')} ${formatMoney(reading.used, reading.currency)}`
 					: undefined,
 				description: low ? `⚠ ${translate(t, 'balance.low')} · ${description}` : description,
 			}
@@ -261,13 +270,13 @@ window.__ModuleLoader__.load({
 			h('path', { d: 'M6.3 9.3h3.4' }))
 		}
 
-		/** 界面下方：输入框统计行里的余额条目。 */
+		/** 页面下方：输入框统计行里的那个条目，走单 key 口径。 */
 		function ComposerStatPill(props) {
 			const t = props?.t
 			const settings = useSettings()
 			const { payload, busy, refresh } = useSummary(settings.refreshSeconds)
 			if (settings.surface !== 'both' && settings.surface !== 'bottom') return null
-			const view = present(payload, settings, t)
+			const view = present(payload, settings, t, 'bottom')
 			const label = view.amount ?? view.idle
 			return h('div', { className: 'dshBaifanBalance_anchor' },
 				h('style', null, CSS),
@@ -283,27 +292,21 @@ window.__ModuleLoader__.load({
 					'aria-label': view.description,
 				},
 				settings.showIcon ? CoinIcon() : null,
-				view.scopeMark === undefined ? null : h('span', { className: 'dshBaifanBalance_scope' }, view.scopeMark),
+				view.mark === undefined ? null : h('span', { className: 'dshBaifanBalance_scope' }, view.mark),
 				h('span', { className: 'dshBaifanBalance_label' }, label),
-				view.used === undefined
-					? null
-					: h('span', { className: 'dshBaifanBalance_sep' }, '·'),
-				view.used === undefined
-					? null
-					: h('span', { className: 'dshBaifanBalance_label' }, view.used)))
+				view.used === undefined ? null : h('span', { className: 'dshBaifanBalance_sep' }, '·'),
+				view.used === undefined ? null : h('span', { className: 'dshBaifanBalance_label' }, view.used)))
 		}
 
-		/** 头像上方：侧栏底部、设置旁边的紧凑按钮；收起成图标列时只剩硬币。 */
+		/** 头像上方：侧栏底部、设置旁边的紧凑按钮，走账户口径；收起成图标列时只剩硬币。 */
 		function FooterAction(props) {
 			const t = props?.t
 			const wide = props?.wide !== false
 			const settings = useSettings()
 			const { payload, busy, refresh } = useSummary(settings.refreshSeconds)
 			if (settings.surface !== 'both' && settings.surface !== 'avatar') return null
-			const view = present(payload, settings, t)
-			const label = view.amount ?? (payload === undefined
-				? ''
-				: (view.unconfigured ? translate(t, 'balance.unconfigured') : '!'))
+			const view = present(payload, settings, t, 'avatar')
+			const label = view.amount ?? (payload === undefined ? '' : (view.unconfigured ? translate(t, 'balance.unconfigured') : '!'))
 			return h('button', {
 				type: 'button',
 				className: 'dshBaifanBalance_pill',
@@ -319,7 +322,7 @@ window.__ModuleLoader__.load({
 			},
 			h('style', null, CSS),
 			settings.showIcon ? CoinIcon() : null,
-			wide && view.scopeMark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.scopeMark) : null,
+			wide && view.mark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.mark) : null,
 			wide && label !== '' ? h('span', { className: 'dshBaifanBalance_label' }, label) : null)
 		}
 
@@ -346,7 +349,7 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_input:focus-visible{outline:none;border-color:var(--dsw-alias-brand-primary)}
 .dshBaifanBalanceSet_check{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary)}
 .dshBaifanBalanceSet_actions{display:flex;align-items:center;gap:8px;padding-top:14px;
-  border-top:1px solid var(--dsw-alias-border-l1)}
+  border-top:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
 .dshBaifanBalanceSet_primary,.dshBaifanBalanceSet_secondary{height:30px;padding:0 12px;font:inherit;
   border-radius:var(--dsw-radius-sm);cursor:pointer}
 .dshBaifanBalanceSet_primary{border:1px solid transparent;background:var(--dsw-alias-brand-primary);
@@ -359,19 +362,27 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_status[data-kind=error]{color:var(--dsw-alias-state-error-primary)}
 .dshBaifanBalanceSet_reading{padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);
   border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);font-size:12px;
-  color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+  color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;white-space:pre-line}
 @media (max-width:560px){
   .dshBaifanBalanceSet_row{flex-direction:column;align-items:stretch;gap:6px}
   .dshBaifanBalanceSet_control{width:100%;justify-content:flex-start}
 }
 `
 
-		/** 设置 → 大白饭余额：连接方式 + 显示与个性化。 */
+		/** 一个凭据槽的现状说明。 */
+		function slotHint(slot, loading) {
+			if (loading) return '正在读取…'
+			if (slot?.configured !== true) return '未配置'
+			return `当前生效：${slot.source}，末四位 ${slot.tail}`
+		}
+
+		/** 设置 → 大白饭余额：两个凭据 + 显示与个性化。 */
 		function SettingsPage() {
 			const [form, setForm] = useState({
 				baseUrl: '',
 				timeoutMs: '15000',
-				key: '',
+				accessToken: '',
+				apiKey: '',
 				surface: DEFAULT_SETTINGS.surface,
 				refreshSeconds: String(DEFAULT_SETTINGS.refreshSeconds),
 				detail: DEFAULT_SETTINGS.detail,
@@ -397,7 +408,8 @@ window.__ModuleLoader__.load({
 					setForm({
 						baseUrl: data.baseUrl ?? '',
 						timeoutMs: String(data.timeoutMs ?? ''),
-						key: '',
+						accessToken: '',
+						apiKey: '',
 						surface: settings.surface,
 						refreshSeconds: String(settings.refreshSeconds),
 						detail: settings.detail,
@@ -447,11 +459,10 @@ window.__ModuleLoader__.load({
 					accent: form.accent,
 					lowBalance: form.lowBalance,
 				}
-				if (form.key !== '') payload.key = form.key
+				if (form.accessToken !== '') payload.accessToken = form.accessToken
+				if (form.apiKey !== '') payload.apiKey = form.apiKey
 				return submit(payload)
 			}, [form, submit])
-
-			const clearKey = useCallback(() => submit({ key: null }), [submit])
 
 			const probe = useCallback(async () => {
 				setBusy(true)
@@ -460,8 +471,14 @@ window.__ModuleLoader__.load({
 					// 走共享的取数通道，外面两处会一起更新。
 					const data = await loadSummary(true)
 					if (alive.current) {
-						setReading(data.ok === true ? describe(data, undefined, 'detailed') : `查询失败：${data.error}`)
-						setMessage({ kind: data.ok === true ? 'ok' : 'error', text: data.ok === true ? '查询成功' : '查询失败' })
+						const lines = []
+						if (data.account !== undefined) lines.push(describe(data.account, undefined, 'detailed'))
+						else if (data.accountError !== undefined) lines.push(`账户口径失败：${data.accountError}`)
+						if (data.key !== undefined) lines.push(describe(data.key, undefined, 'detailed'))
+						else if (data.keyError !== undefined) lines.push(`key 口径失败：${data.keyError}`)
+						const ok = data.ok === true
+						setReading(lines.join('\n'))
+						setMessage({ kind: ok ? 'ok' : 'error', text: ok ? '查询成功' : '查询失败' })
 					}
 				} catch (error) {
 					if (alive.current) setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
@@ -471,11 +488,9 @@ window.__ModuleLoader__.load({
 			}, [])
 
 			const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
-			const keyHint = info === undefined
-				? '正在读取配置…'
-				: (info.key.configured === true
-					? `当前生效：${info.key.source}，末四位 ${info.key.tail}`
-					: '还没有可用凭据')
+			const loading = info === undefined
+			const accountSlot = info?.credentials?.account
+			const keySlot = info?.credentials?.key
 
 			/** 一行「标签在左、控件在右」；说明可以给多行，{ text, strong } 用来强调。 */
 			const row = (id, label, hints, control) => {
@@ -511,19 +526,6 @@ window.__ModuleLoader__.load({
 						placeholder: DEFAULT_BASE_URL,
 						onChange: update('baseUrl'),
 					})),
-					row('baifan-key', '密钥 / 访问令牌', [
-						keyHint,
-						'api key 查这个 key 所设置的额度；访问令牌查询账户余额',
-						{ text: '推荐使用访问令牌：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
-					], h('input', {
-						id: 'baifan-key',
-						className: 'dshBaifanBalanceSet_input',
-						type: 'password',
-						value: form.key,
-						placeholder: '留空不改动',
-						autoComplete: 'off',
-						onChange: update('key'),
-					})),
 					row('baifan-timeout', '超时（毫秒）', '含换通道重试的总预算', h('input', {
 						id: 'baifan-timeout',
 						className: 'dshBaifanBalanceSet_input',
@@ -536,6 +538,34 @@ window.__ModuleLoader__.load({
 					}))),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
+					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '凭据'),
+					row('baifan-access-token', '访问令牌（账户口径）', [
+						slotHint(accountSlot, loading),
+						'查账户完整余额，还能看到账号、分组、请求数；头像上方显示的就是它',
+						{ text: '推荐：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
+					], h('input', {
+						id: 'baifan-access-token',
+						className: 'dshBaifanBalanceSet_input',
+						type: 'password',
+						value: form.accessToken,
+						placeholder: '留空不改动',
+						autoComplete: 'off',
+						onChange: update('accessToken'),
+					})),
+					row('baifan-api-key', 'api key（单 key 口径，可选）', [
+						slotHint(keySlot, loading),
+						'查这个 key 自己被设的额度；不限额的 key 会显示「无限制」；页面下方显示的是它',
+					], h('input', {
+						id: 'baifan-api-key',
+						className: 'dshBaifanBalanceSet_input',
+						type: 'password',
+						value: form.apiKey,
+						placeholder: 'sk-... 留空不改动',
+						autoComplete: 'off',
+						onChange: update('apiKey'),
+					}))),
+
+				h('div', { className: 'dshBaifanBalanceSet_group' },
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '显示与个性化'),
 					row('baifan-surface', '显示位置', '保存后立刻生效', h('select', {
 						id: 'baifan-surface',
@@ -544,8 +574,8 @@ window.__ModuleLoader__.load({
 						onChange: update('surface'),
 					},
 					h('option', { value: 'both' }, '两处都显示'),
-					h('option', { value: 'avatar' }, '只在头像上方'),
-					h('option', { value: 'bottom' }, '只在界面下方'),
+					h('option', { value: 'avatar' }, '只在头像上方（账户）'),
+					h('option', { value: 'bottom' }, '只在页面下方（key）'),
 					h('option', { value: 'hidden' }, '都不显示'))),
 					row('baifan-refresh', '刷新间隔（秒）', '15–600', h('input', {
 						id: 'baifan-refresh',
@@ -596,8 +626,21 @@ window.__ModuleLoader__.load({
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_primary', onClick: save, disabled: busy }, '保存'),
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: probe, disabled: busy }, '测试查询'),
-					info !== undefined && info.key.storedInSettings === true
-						? h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: clearKey, disabled: busy }, '清除密钥')
+					accountSlot?.configured === true
+						? h('button', {
+							type: 'button',
+							className: 'dshBaifanBalanceSet_secondary',
+							onClick: () => submit({ accessToken: null }),
+							disabled: busy,
+						}, '清除访问令牌')
+						: null,
+					keySlot?.configured === true
+						? h('button', {
+							type: 'button',
+							className: 'dshBaifanBalanceSet_secondary',
+							onClick: () => submit({ apiKey: null }),
+							disabled: busy,
+						}, '清除 api key')
 						: null,
 					message === undefined
 						? null
@@ -622,30 +665,30 @@ window.__ModuleLoader__.load({
 						'balance.unavailable': '余额不可用',
 						'balance.unconfigured': '未配置',
 						'balance.unlimited': '无限制',
-						'balance.scope.token': '令牌额度',
-						'balance.scope.account': '账户余额',
-						'balance.mark.token': '额度',
-						'balance.mark.account': '账户',
 						'balance.remaining': '剩余',
 						'balance.used': '已用',
 						'balance.total': '总额',
 						'balance.updated': '更新',
 						'balance.low': '低于提醒线',
+						'balance.scope.token': 'key 额度',
+						'balance.scope.account': '账户余额',
+						'balance.mark.token': '额度',
+						'balance.mark.account': '账户',
 					},
 					en: {
 						'balance.loading': 'Checking…',
 						'balance.unavailable': 'Balance unavailable',
 						'balance.unconfigured': 'Not set up',
 						'balance.unlimited': 'Unlimited',
-						'balance.scope.token': 'Token quota',
-						'balance.scope.account': 'Account balance',
-						'balance.mark.token': 'Key',
-						'balance.mark.account': 'Account',
 						'balance.remaining': 'Remaining',
 						'balance.used': 'Used',
 						'balance.total': 'Total',
 						'balance.updated': 'Updated',
 						'balance.low': 'Below your alert threshold',
+						'balance.scope.token': 'Key quota',
+						'balance.scope.account': 'Account balance',
+						'balance.mark.token': 'Key',
+						'balance.mark.account': 'Account',
 					},
 				}), 'baifan-balance: locale')
 
