@@ -21,8 +21,8 @@ window.__ModuleLoader__.load({
 			detail: 'standard',
 			showIcon: true,
 			accent: 'auto',
-			lowBalanceAccount: 5,
-			lowBalanceKey: 5,
+			lowBalanceAccount: 1,
+			lowBalanceKey: 1,
 			autoDetectKey: true,
 		}
 
@@ -368,6 +368,9 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_check{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary)}
 .dshBaifanBalanceSet_actions{display:flex;align-items:center;gap:8px;padding-top:14px;
   border-top:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
+.dshBaifanBalanceSet_notes{display:flex;flex-direction:column;gap:4px;padding-top:8px;
+  border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.dshBaifanBalanceSet_notesCode{font-family:var(--dsw-font-family-code,ui-monospace,monospace)}
 .dshBaifanBalanceSet_primary,.dshBaifanBalanceSet_secondary{height:30px;padding:0 12px;font:inherit;
   border-radius:var(--dsw-radius-sm);cursor:pointer}
 .dshBaifanBalanceSet_primary{border:1px solid transparent;background:var(--dsw-alias-brand-primary);
@@ -406,8 +409,8 @@ window.__ModuleLoader__.load({
 				detail: DEFAULT_SETTINGS.detail,
 				showIcon: DEFAULT_SETTINGS.showIcon,
 				accent: DEFAULT_SETTINGS.accent,
-				lowBalanceAccount: '5',
-				lowBalanceKey: '5',
+				lowBalanceAccount: '1',
+				lowBalanceKey: '1',
 				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
 			})
 			const [info, setInfo] = useState(undefined)
@@ -677,6 +680,14 @@ window.__ModuleLoader__.load({
 						value: form.lowBalanceKey,
 						onChange: update('lowBalanceKey'),
 					}))),
+
+				h('div', { className: 'dshBaifanBalanceSet_group' },
+					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '其他入口'),
+					h('div', { className: 'dshBaifanBalanceSet_notes' },
+						h('span', null, '对话里问「我余额还剩多少」→ 助手会调用 relay_balance 工具'),
+						h('span', null, '输入框敲 /balance 直接出结果，不走模型、不耗 token'),
+						h('span', null, '/balance 后面可加 account 或 key 指定口径，不带参数＝自动选择'),
+						h('span', null, '两者都能临时传一个别的凭据来查，不会改动这里的设置'))),
 
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_primary', onClick: save, disabled: busy }, '保存'),
