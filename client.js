@@ -30,6 +30,8 @@ window.__ModuleLoader__.load({
 			'balance.unavailable': '余额不可用',
 			'balance.unconfigured': '未配置',
 			'balance.unlimited': '无限制',
+			'balance.scope.token': '令牌额度',
+			'balance.scope.account': '账户余额',
 			'balance.remaining': '剩余',
 			'balance.used': '已用',
 			'balance.total': '总额',
@@ -102,48 +104,87 @@ window.__ModuleLoader__.load({
 			return value ?? DEFAULT_SETTINGS
 		}
 
-		/** 两个入口共用一份读数：挂载即取，之后按设置里的刷新间隔静默刷新。 */
-		function useSummary(refreshSeconds) {
-			const [payload, setPayload] = useState(undefined)
-			const [busy, setBusy] = useState(true)
-			const alive = useRef(true)
-			useEffect(() => () => { alive.current = false }, [])
+		// ---- 共享读数：一处取，处处同步；设置页点查询也会广播到外面两处 ----
+		const summaryStore = { value: undefined, inFlight: undefined, listeners: new Set(), timer: undefined, period: 0 }
 
-			const load = useCallback(async (force) => {
-				setBusy(true)
+		function publishSummary(payload) {
+			summaryStore.value = payload
+			for (const listener of summaryStore.listeners) listener()
+		}
+
+		/** 拉一次读数并广播；force 绕过 Host 侧 30 秒缓存，并发请求合并成一次。 */
+		function loadSummary(force) {
+			if (force !== true && summaryStore.inFlight !== undefined) return summaryStore.inFlight
+			const request = (async () => {
 				try {
-					const response = await fetch(`${SUMMARY_URL}${force ? '?force=1' : ''}`, {
+					const response = await fetch(`${SUMMARY_URL}${force === true ? '?force=1' : ''}`, {
 						headers: { accept: 'application/json' },
 					})
-					const body = await response.json()
-					if (alive.current) setPayload(body)
+					publishSummary(await response.json())
 				} catch (error) {
-					if (alive.current) {
-						setPayload({ ok: false, error: error instanceof Error ? error.message : String(error) })
-					}
+					publishSummary({ ok: false, error: error instanceof Error ? error.message : String(error) })
 				} finally {
-					if (alive.current) setBusy(false)
+					summaryStore.inFlight = undefined
+				}
+				return summaryStore.value
+			})()
+			summaryStore.inFlight = request
+			return request
+		}
+
+		/** 所有订阅者共用一个定时器，挂几个组件都只按一个节拍刷新。 */
+		function ensureTicker(refreshSeconds) {
+			const period = Math.max(refreshSeconds, 15) * 1000
+			if (summaryStore.timer !== undefined && summaryStore.period === period) return
+			if (summaryStore.timer !== undefined) clearInterval(summaryStore.timer)
+			summaryStore.period = period
+			summaryStore.timer = setInterval(() => { void loadSummary(false) }, period)
+		}
+
+		/** 两个入口共用同一份读数与刷新节奏，互相之间不会各查一次。 */
+		function useSummary(refreshSeconds) {
+			const [payload, setPayload] = useState(summaryStore.value)
+			const [busy, setBusy] = useState(false)
+			useEffect(() => {
+				const listener = () => setPayload(summaryStore.value)
+				summaryStore.listeners.add(listener)
+				ensureTicker(refreshSeconds)
+				if (summaryStore.value === undefined) void loadSummary(false)
+				return () => {
+					summaryStore.listeners.delete(listener)
+					if (summaryStore.listeners.size === 0 && summaryStore.timer !== undefined) {
+						clearInterval(summaryStore.timer)
+						summaryStore.timer = undefined
+						summaryStore.period = 0
+					}
 				}
 			}, [])
 
-			useEffect(() => {
-				void load(false)
-				const timer = setInterval(() => { void load(false) }, Math.max(refreshSeconds, 15) * 1000)
-				return () => clearInterval(timer)
-			}, [load, refreshSeconds])
+			return {
+				payload,
+				busy,
+				refresh: () => {
+					setBusy(true)
+					void loadSummary(true).finally(() => setBusy(false))
+				},
+			}
+		}
 
-			return { payload, busy, refresh: () => { void load(true) } }
+		/** 数值说的是什么：这个令牌的额度，还是整个账户的余额。 */
+		function scopeOf(payload, t) {
+			return translate(t, payload?.scope === 'account' ? 'balance.scope.account' : 'balance.scope.token')
 		}
 
 		/** 把一次读数压成提示语；detail 决定给多少内容。 */
 		function describe(payload, t, detail) {
 			if (payload === undefined) return translate(t, 'balance.loading')
 			if (payload.ok !== true) return String(payload.error)
-			const parts = [
-				payload.site,
-				`${translate(t, 'balance.remaining')} ${formatMoney(payload.remaining, payload.currency)}`,
-			]
-			if (detail !== 'compact') {
+			const parts = [payload.site]
+			if (detail !== 'compact') parts.push(scopeOf(payload, t))
+			parts.push(payload.unlimited === true
+				? translate(t, 'balance.unlimited')
+				: `${translate(t, 'balance.remaining')} ${formatMoney(payload.remaining, payload.currency)}`)
+			if (detail !== 'compact' && payload.unlimited !== true) {
 				parts.push(`${translate(t, 'balance.used')} ${formatMoney(payload.used, payload.currency)}`)
 				parts.push(`${translate(t, 'balance.total')} ${formatMoney(payload.total, payload.currency)}`)
 				if (payload.account !== undefined) parts.push(`${payload.account}${payload.group ? `（${payload.group}）` : ''}`)
@@ -377,6 +418,9 @@ window.__ModuleLoader__.load({
 					if (alive.current) setMessage({ kind: 'ok', text: '已保存' })
 					refreshSettings()
 					await load()
+					// 写配置会让插件重启一次，缓一下再拉，避免撞在重启空档上；外面两处一起更新。
+					await new Promise((resolve) => setTimeout(resolve, 700))
+					await loadSummary(true)
 				} catch (error) {
 					if (alive.current) setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
 				} finally {
@@ -405,8 +449,8 @@ window.__ModuleLoader__.load({
 				setBusy(true)
 				setMessage(undefined)
 				try {
-					const response = await fetch(`${SUMMARY_URL}?force=1`, { headers: { accept: 'application/json' } })
-					const data = await response.json()
+					// 走共享的取数通道，外面两处会一起更新。
+					const data = await loadSummary(true)
 					if (alive.current) {
 						setReading(data.ok === true ? describe(data, undefined, 'detailed') : `查询失败：${data.error}`)
 						setMessage({ kind: data.ok === true ? 'ok' : 'error', text: data.ok === true ? '查询成功' : '查询失败' })
@@ -426,11 +470,14 @@ window.__ModuleLoader__.load({
 					: '还没有可用凭据')
 
 			/** 一行「标签在左、控件在右」，行与行之间由 CSS 的发丝线分隔。 */
-			const row = (id, label, hint, control) => h('div', { className: 'dshBaifanBalanceSet_row' },
-				h('div', { className: 'dshBaifanBalanceSet_text' },
-					h('label', { className: 'dshBaifanBalanceSet_label', htmlFor: id }, label),
-					hint === undefined ? null : h('span', { className: 'dshBaifanBalanceSet_hint' }, hint)),
-				h('div', { className: 'dshBaifanBalanceSet_control' }, control))
+			const row = (id, label, hints, control) => {
+				const list = hints === undefined ? [] : (Array.isArray(hints) ? hints : [hints])
+				return h('div', { className: 'dshBaifanBalanceSet_row' },
+					h('div', { className: 'dshBaifanBalanceSet_text' },
+						h('label', { className: 'dshBaifanBalanceSet_label', htmlFor: id }, label),
+						list.map((text, index) => h('span', { className: 'dshBaifanBalanceSet_hint', key: `hint-${index}` }, text))),
+					h('div', { className: 'dshBaifanBalanceSet_control' }, control))
+			}
 
 			return h('div', { className: 'dshBaifanBalanceSet_root' },
 				h('style', null, SETTINGS_CSS),
@@ -449,7 +496,7 @@ window.__ModuleLoader__.load({
 						placeholder: DEFAULT_BASE_URL,
 						onChange: update('baseUrl'),
 					})),
-					row('baifan-key', '密钥 / 访问令牌', keyHint, h('input', {
+					row('baifan-key', '密钥 / 访问令牌', [keyHint, 'sk- 查这个令牌自己的额度；访问令牌查账户完整余额'], h('input', {
 						id: 'baifan-key',
 						className: 'dshBaifanBalanceSet_input',
 						type: 'password',
@@ -556,6 +603,8 @@ window.__ModuleLoader__.load({
 						'balance.unavailable': '余额不可用',
 						'balance.unconfigured': '未配置',
 						'balance.unlimited': '无限制',
+						'balance.scope.token': '令牌额度',
+						'balance.scope.account': '账户余额',
 						'balance.remaining': '剩余',
 						'balance.used': '已用',
 						'balance.total': '总额',
@@ -567,6 +616,8 @@ window.__ModuleLoader__.load({
 						'balance.unavailable': 'Balance unavailable',
 						'balance.unconfigured': 'Not set up',
 						'balance.unlimited': 'Unlimited',
+						'balance.scope.token': 'Token quota',
+						'balance.scope.account': 'Account balance',
 						'balance.remaining': 'Remaining',
 						'balance.used': 'Used',
 						'balance.total': 'Total',
