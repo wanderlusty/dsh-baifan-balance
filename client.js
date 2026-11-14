@@ -21,8 +21,8 @@ window.__ModuleLoader__.load({
 			detail: 'standard',
 			showIcon: true,
 			accent: 'auto',
-			lowBalanceAccount: 0,
-			lowBalanceKey: 0,
+			lowBalanceAccount: 5,
+			lowBalanceKey: 5,
 			autoDetectKey: true,
 		}
 
@@ -261,7 +261,7 @@ window.__ModuleLoader__.load({
 .dshBaifanBalance_pill[data-state=error],.dshBaifanBalance_pill[data-state=error]:hover{color:var(--dsw-alias-state-error-primary)}
 .dshBaifanBalance_pill[data-low=true],.dshBaifanBalance_pill[data-low=true]:hover{color:var(--dsw-alias-state-error-primary);font-weight:500}
 .dshBaifanBalance_pill[data-low=true] svg,.dshBaifanBalance_pill[data-low=true]:hover svg{color:var(--dsw-alias-state-error-primary)}
-@media (hover:hover){.dshBaifanBalance_pill:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}}
+@media (hover:hover){.dshBaifanBalance_pill:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover)}}
 .dshBaifanBalance_label{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .dshBaifanBalance_scope{color:var(--dsw-alias-label-tertiary);font-size:11px}
 .dshBaifanBalance_sep{opacity:.45}
@@ -406,8 +406,8 @@ window.__ModuleLoader__.load({
 				detail: DEFAULT_SETTINGS.detail,
 				showIcon: DEFAULT_SETTINGS.showIcon,
 				accent: DEFAULT_SETTINGS.accent,
-				lowBalanceAccount: '0',
-				lowBalanceKey: '0',
+				lowBalanceAccount: '5',
+				lowBalanceKey: '5',
 				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
 			})
 			const [info, setInfo] = useState(undefined)
@@ -548,14 +548,14 @@ window.__ModuleLoader__.load({
 				style: { flex: '1 1 auto', minWidth: '0' },
 				onChange: update(field),
 			}),
-			value === ''
-				? null
-				: h('button', {
+			value
+				? h('button', {
 					type: 'button',
 					className: 'dshBaifanBalanceSet_inlineSave',
 					disabled: busy,
 					onClick: () => submit({ [field]: value }),
-				}, '保存'))
+				}, '保存')
+				: null)
 
 			return h('div', { className: 'dshBaifanBalanceSet_root' },
 				h('style', null, SETTINGS_CSS),
@@ -586,15 +586,14 @@ window.__ModuleLoader__.load({
 					}))),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
-					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '凭据'),
+					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '余额显示'),
 					row('baifan-access-token', '访问令牌（账户口径）', [
 						slotHint(accountSlot, loading),
 						{ text: '账户完整余额', strong: true },
 						'头像上方显示的就是它',
-						{ text: '推荐：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
 					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
 
-					row('baifan-auto-detect', 'api key（单 key 口径）', [
+					row('baifan-auto-detect', '自动检测当前使用 key 的余额', [
 						{ text: '自动检测当前使用的 key，无需手动填写', strong: true },
 						'页面下方显示的就是它；不限额的 key 会显示「无限制」',
 						keySlot?.source === '自动检测' ? `当前生效：自动检测，末四位 ${keySlot.tail}` : undefined,
