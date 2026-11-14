@@ -593,8 +593,7 @@ window.__ModuleLoader__.load({
 						'头像上方显示的就是它',
 					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
 
-					row('baifan-auto-detect', '自动检测当前使用 key 的余额', [
-						{ text: '自动检测当前使用的 key，无需手动填写', strong: true },
+					row('baifan-auto-detect', '自动检测当前使用 key 的限额', [
 						'页面下方显示的就是它；不限额的 key 会显示「无限制」',
 						keySlot?.source === '自动检测' ? `当前生效：自动检测，末四位 ${keySlot.tail}` : undefined,
 					], h('input', {
