@@ -1,6 +1,6 @@
 # 大白饭余额 · DSH 插件
 
-在 [DSH](https://github.com/deepseek-ai/deepseek-harness) 里直接看到[大白饭中转站](https://baifanapi.awstme.top/)（new-api 二开）还剩多少钱，不用打开网页。
+在 [DSH](https://github.com/deepseek-ai/deepseek-harness) 里直接看到[大白饭中转站](https://baifanapi.awstme.top/)还剩多少钱，不用打开网页。
 
 - **输入框下方统计行**多一个余额条目，和「轮次 / 速度 / token / 缓存命中」排在一起
 - **侧栏头像上方**一个余额按钮，收起成图标列时只剩硬币
@@ -94,18 +94,6 @@ git clone https://github.com/wanderlusty/dsh-baifan-balance.git
 工具和命令都能临时传一个别的凭据来查，不会改动设置页里的配置。
 
 ---
-
-## API（给二次开发者）
-
-插件在本机回环上注册两条只读/读写路由，供客户端插件使用：
-
-```
-GET  /baifan-balance/summary[?force=1]   → { ok, configured, account?, key?, accountError?, keyError? }
-GET  /baifan-balance/config              → { baseUrl, timeoutMs, settings, credentials: {account,key}, canSaveConfig }
-POST /baifan-balance/config              → 保存 baseUrl / timeoutMs / 个性化 / accessToken / apiKey
-```
-
-两条路由都只接受**回环 Host**（防 DNS rebinding），写操作另外要求**同源**（Origin 与 Host 一致）。返回值里永远不含完整密钥，只有来源和末四位。
 
 ## 凭据从哪来
 
