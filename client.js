@@ -32,6 +32,8 @@ window.__ModuleLoader__.load({
 			'balance.unlimited': '无限制',
 			'balance.scope.token': '令牌额度',
 			'balance.scope.account': '账户余额',
+			'balance.mark.token': '额度',
+			'balance.mark.account': '账户',
 			'balance.remaining': '剩余',
 			'balance.used': '已用',
 			'balance.total': '总额',
@@ -216,6 +218,8 @@ window.__ModuleLoader__.load({
 				idle: payload === undefined
 					? translate(t, 'balance.loading')
 					: translate(t, unconfigured ? 'balance.unconfigured' : 'balance.unavailable'),
+				// 数值旁边亮明口径：这是账户余额，还是某一个 key 的额度。
+				scopeMark: ok ? translate(t, payload.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token') : undefined,
 				used: ok && !unlimited && settings.detail === 'detailed'
 					? `${translate(t, 'balance.used')} ${formatMoney(payload.used, payload.currency)}`
 					: undefined,
@@ -236,6 +240,7 @@ window.__ModuleLoader__.load({
 .dshBaifanBalance_pill[data-low=true] svg{color:var(--dsw-alias-state-error-primary)}
 @media (hover:hover){.dshBaifanBalance_pill:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}}
 .dshBaifanBalance_label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dshBaifanBalance_scope{color:var(--dsw-alias-label-tertiary);font-size:11px}
 .dshBaifanBalance_sep{opacity:.45}
 `
 
@@ -278,6 +283,7 @@ window.__ModuleLoader__.load({
 					'aria-label': view.description,
 				},
 				settings.showIcon ? CoinIcon() : null,
+				view.scopeMark === undefined ? null : h('span', { className: 'dshBaifanBalance_scope' }, view.scopeMark),
 				h('span', { className: 'dshBaifanBalance_label' }, label),
 				view.used === undefined
 					? null
@@ -313,6 +319,7 @@ window.__ModuleLoader__.load({
 			},
 			h('style', null, CSS),
 			settings.showIcon ? CoinIcon() : null,
+			wide && view.scopeMark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.scopeMark) : null,
 			wide && label !== '' ? h('span', { className: 'dshBaifanBalance_label' }, label) : null)
 		}
 
@@ -331,6 +338,7 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_text{display:flex;flex-direction:column;gap:2px;min-width:0}
 .dshBaifanBalanceSet_label{font-weight:500}
 .dshBaifanBalanceSet_hint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.dshBaifanBalanceSet_hintStrong{font-size:12px;color:var(--dsw-alias-brand-primary);font-weight:500}
 .dshBaifanBalanceSet_control{flex:none;width:240px;display:flex;justify-content:flex-end;align-items:center}
 .dshBaifanBalanceSet_input{height:30px;width:100%;box-sizing:border-box;padding:0 8px;
   border:1px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-sm);
@@ -469,13 +477,20 @@ window.__ModuleLoader__.load({
 					? `当前生效：${info.key.source}，末四位 ${info.key.tail}`
 					: '还没有可用凭据')
 
-			/** 一行「标签在左、控件在右」，行与行之间由 CSS 的发丝线分隔。 */
+			/** 一行「标签在左、控件在右」；说明可以给多行，{ text, strong } 用来强调。 */
 			const row = (id, label, hints, control) => {
 				const list = hints === undefined ? [] : (Array.isArray(hints) ? hints : [hints])
 				return h('div', { className: 'dshBaifanBalanceSet_row' },
 					h('div', { className: 'dshBaifanBalanceSet_text' },
 						h('label', { className: 'dshBaifanBalanceSet_label', htmlFor: id }, label),
-						list.map((text, index) => h('span', { className: 'dshBaifanBalanceSet_hint', key: `hint-${index}` }, text))),
+						list.map((hint, index) => {
+							const text = typeof hint === 'string' ? hint : hint.text
+							const strong = typeof hint === 'string' ? false : hint.strong === true
+							return h('span', {
+								key: `hint-${index}`,
+								className: strong ? 'dshBaifanBalanceSet_hintStrong' : 'dshBaifanBalanceSet_hint',
+							}, text)
+						})),
 					h('div', { className: 'dshBaifanBalanceSet_control' }, control))
 			}
 
@@ -496,7 +511,11 @@ window.__ModuleLoader__.load({
 						placeholder: DEFAULT_BASE_URL,
 						onChange: update('baseUrl'),
 					})),
-					row('baifan-key', '密钥 / 访问令牌', [keyHint, 'sk- 查这个令牌自己的额度；访问令牌查账户完整余额'], h('input', {
+					row('baifan-key', '密钥 / 访问令牌', [
+						keyHint,
+						'api key 查这个 key 所设置的额度；访问令牌查询账户余额',
+						{ text: '推荐使用访问令牌：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
+					], h('input', {
 						id: 'baifan-key',
 						className: 'dshBaifanBalanceSet_input',
 						type: 'password',
@@ -605,6 +624,8 @@ window.__ModuleLoader__.load({
 						'balance.unlimited': '无限制',
 						'balance.scope.token': '令牌额度',
 						'balance.scope.account': '账户余额',
+						'balance.mark.token': '额度',
+						'balance.mark.account': '账户',
 						'balance.remaining': '剩余',
 						'balance.used': '已用',
 						'balance.total': '总额',
@@ -618,6 +639,8 @@ window.__ModuleLoader__.load({
 						'balance.unlimited': 'Unlimited',
 						'balance.scope.token': 'Token quota',
 						'balance.scope.account': 'Account balance',
+						'balance.mark.token': 'Key',
+						'balance.mark.account': 'Account',
 						'balance.remaining': 'Remaining',
 						'balance.used': 'Used',
 						'balance.total': 'Total',
