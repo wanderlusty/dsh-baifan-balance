@@ -21,7 +21,8 @@ window.__ModuleLoader__.load({
 			detail: 'standard',
 			showIcon: true,
 			accent: 'auto',
-			lowBalance: 0,
+			lowBalanceAccount: 0,
+			lowBalanceKey: 0,
 			autoDetectKey: true,
 		}
 
@@ -220,7 +221,9 @@ window.__ModuleLoader__.load({
 			const ok = reading !== undefined
 			const unconfigured = payload !== undefined && payload.ok !== true && payload.configured === false
 			const unlimited = ok && reading.unlimited === true
-			const low = ok && !unlimited && settings.lowBalance > 0 && reading.remaining < settings.lowBalance
+			// 提醒线按口径分开：账户余额和 key 额度各有一条。
+			const threshold = reading?.scope === 'account' ? settings.lowBalanceAccount : settings.lowBalanceKey
+			const low = ok && !unlimited && threshold > 0 && reading.remaining < threshold
 			let description
 			if (ok) description = describe(reading, t, settings.detail)
 			else if (payload === undefined) description = translate(t, 'balance.loading')
@@ -254,9 +257,10 @@ window.__ModuleLoader__.load({
   white-space:nowrap;cursor:pointer}
 .dshBaifanBalance_pill svg{width:14px;height:14px;flex:none;color:var(--baifan-accent,currentColor)}
 .dshBaifanBalance_pill:disabled{cursor:default}
-.dshBaifanBalance_pill[data-state=error]{color:var(--dsw-alias-state-error-primary)}
-.dshBaifanBalance_pill[data-low=true]{color:var(--dsw-alias-state-error-primary);font-weight:500}
-.dshBaifanBalance_pill[data-low=true] svg{color:var(--dsw-alias-state-error-primary)}
+/* 预警/错误色必须压过 hover 的常规换色，否则鼠标一悬停红色就变灰了。 */
+.dshBaifanBalance_pill[data-state=error],.dshBaifanBalance_pill[data-state=error]:hover{color:var(--dsw-alias-state-error-primary)}
+.dshBaifanBalance_pill[data-low=true],.dshBaifanBalance_pill[data-low=true]:hover{color:var(--dsw-alias-state-error-primary);font-weight:500}
+.dshBaifanBalance_pill[data-low=true] svg,.dshBaifanBalance_pill[data-low=true]:hover svg{color:var(--dsw-alias-state-error-primary)}
 @media (hover:hover){.dshBaifanBalance_pill:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}}
 .dshBaifanBalance_label{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .dshBaifanBalance_scope{color:var(--dsw-alias-label-tertiary);font-size:11px}
@@ -302,10 +306,10 @@ window.__ModuleLoader__.load({
 					'aria-label': view.description,
 				},
 				settings.showIcon ? CoinIcon() : null,
-				view.mark === undefined ? null : h('span', { className: 'dshBaifanBalance_scope' }, view.mark),
 				h('span', { className: 'dshBaifanBalance_label' }, label),
 				view.used === undefined ? null : h('span', { className: 'dshBaifanBalance_sep' }, '·'),
-				view.used === undefined ? null : h('span', { className: 'dshBaifanBalance_label' }, view.used)))
+				view.used === undefined ? null : h('span', { className: 'dshBaifanBalance_label' }, view.used),
+				view.mark === undefined ? null : h('span', { className: 'dshBaifanBalance_scope' }, view.mark)))
 		}
 
 		/** 头像上方：侧栏底部、设置旁边的紧凑按钮，走账户口径；收起成图标列时只剩硬币。 */
@@ -332,8 +336,8 @@ window.__ModuleLoader__.load({
 			},
 			h('style', null, CSS),
 			settings.showIcon ? CoinIcon() : null,
-			wide && view.mark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.mark) : null,
-			wide && label !== '' ? h('span', { className: 'dshBaifanBalance_label' }, label) : null)
+			wide && label !== '' ? h('span', { className: 'dshBaifanBalance_label' }, label) : null,
+			wide && view.mark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.mark) : null)
 		}
 
 		// 设置页走「标签在左、控件在右」的行式布局，行间用发丝线分隔，和宿主设置页一致。
@@ -353,6 +357,10 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_hint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dshBaifanBalanceSet_hintStrong{font-size:12px;color:var(--dsw-alias-brand-primary);font-weight:500}
 .dshBaifanBalanceSet_control{flex:none;width:240px;display:flex;justify-content:flex-end;align-items:center}
+.dshBaifanBalanceSet_controlWide{width:300px;gap:6px}
+.dshBaifanBalanceSet_inlineSave{flex:none;height:30px;padding:0 10px;font:inherit;font-size:12px;
+  border:1px solid transparent;border-radius:var(--dsw-radius-sm);cursor:pointer;
+  background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:500}
 .dshBaifanBalanceSet_input{height:30px;width:100%;box-sizing:border-box;padding:0 8px;
   border:1px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-sm);
   background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}
@@ -398,7 +406,8 @@ window.__ModuleLoader__.load({
 				detail: DEFAULT_SETTINGS.detail,
 				showIcon: DEFAULT_SETTINGS.showIcon,
 				accent: DEFAULT_SETTINGS.accent,
-				lowBalance: '0',
+				lowBalanceAccount: '0',
+				lowBalanceKey: '0',
 				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
 			})
 			const [info, setInfo] = useState(undefined)
@@ -426,7 +435,8 @@ window.__ModuleLoader__.load({
 						detail: settings.detail,
 						showIcon: settings.showIcon,
 						accent: settings.accent,
-						lowBalance: String(settings.lowBalance),
+						lowBalanceAccount: String(settings.lowBalanceAccount ?? 0),
+						lowBalanceKey: String(settings.lowBalanceKey ?? 0),
 						autoDetectKey: settings.autoDetectKey !== false,
 					})
 				} catch (error) {
@@ -469,7 +479,8 @@ window.__ModuleLoader__.load({
 					detail: form.detail,
 					showIcon: form.showIcon,
 					accent: form.accent,
-					lowBalance: form.lowBalance,
+					lowBalanceAccount: form.lowBalanceAccount,
+					lowBalanceKey: form.lowBalanceKey,
 					autoDetectKey: form.autoDetectKey,
 				}
 				if (form.accessToken !== '') payload.accessToken = form.accessToken
@@ -506,8 +517,9 @@ window.__ModuleLoader__.load({
 			const keySlot = info?.credentials?.key
 
 			/** 一行「标签在左、控件在右」；说明可以给多行，{ text, strong } 用来强调。 */
-			const row = (id, label, hints, control) => {
-				const list = hints === undefined ? [] : (Array.isArray(hints) ? hints : [hints])
+			const row = (id, label, hints, control, wide) => {
+				const list = (hints === undefined ? [] : (Array.isArray(hints) ? hints : [hints]))
+					.filter((hint) => hint !== undefined && hint !== null && hint !== '')
 				return h('div', { className: 'dshBaifanBalanceSet_row' },
 					h('div', { className: 'dshBaifanBalanceSet_text' },
 						h('label', { className: 'dshBaifanBalanceSet_label', htmlFor: id }, label),
@@ -519,8 +531,31 @@ window.__ModuleLoader__.load({
 								className: strong ? 'dshBaifanBalanceSet_hintStrong' : 'dshBaifanBalanceSet_hint',
 							}, text)
 						})),
-					h('div', { className: 'dshBaifanBalanceSet_control' }, control))
+					h('div', { className: wide === true ? 'dshBaifanBalanceSet_control dshBaifanBalanceSet_controlWide' : 'dshBaifanBalanceSet_control' }, control))
 			}
+
+			/** 凭据输入框 + 一改动就出现的行内「保存」，防止填完忘了按底部的保存。 */
+			const credentialField = (id, value, field, placeholder) => h('div', {
+				style: { display: 'flex', alignItems: 'center', gap: '6px', width: '100%' },
+			},
+			h('input', {
+				id,
+				className: 'dshBaifanBalanceSet_input',
+				type: 'password',
+				value,
+				placeholder,
+				autoComplete: 'off',
+				style: { flex: '1 1 auto', minWidth: '0' },
+				onChange: update(field),
+			}),
+			value === ''
+				? null
+				: h('button', {
+					type: 'button',
+					className: 'dshBaifanBalanceSet_inlineSave',
+					disabled: busy,
+					onClick: () => submit({ [field]: value }),
+				}, '保存'))
 
 			return h('div', { className: 'dshBaifanBalanceSet_root' },
 				h('style', null, SETTINGS_CSS),
@@ -557,38 +592,26 @@ window.__ModuleLoader__.load({
 						{ text: '账户完整余额', strong: true },
 						'头像上方显示的就是它',
 						{ text: '推荐：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
-					], h('input', {
-						id: 'baifan-access-token',
-						className: 'dshBaifanBalanceSet_input',
-						type: 'password',
-						value: form.accessToken,
-						placeholder: '留空不改动',
-						autoComplete: 'off',
-						onChange: update('accessToken'),
-					})),
-					row('baifan-api-key', 'api key（单 key 口径，可选）', [
-						slotHint(keySlot, loading),
-						'这个 key 自己被设的额度；页面下方显示的就是它',
-						'不限额的 key 会显示「无限制」',
-					], h('input', {
-						id: 'baifan-api-key',
-						className: 'dshBaifanBalanceSet_input',
-						type: 'password',
-						value: form.apiKey,
-						placeholder: 'sk-... 留空不改动',
-						autoComplete: 'off',
-						onChange: update('apiKey'),
-					})),
-					row('baifan-auto-detect', '自动检测当前使用的 key', [
-						'开启后自动用 DSH 正在使用的那条 api key，不用自己设置',
-						'关掉后页面下方只显示上面手动填的 api key',
+					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
+
+					row('baifan-auto-detect', 'api key（单 key 口径）', [
+						{ text: '自动检测当前使用的 key，无需手动填写', strong: true },
+						'页面下方显示的就是它；不限额的 key 会显示「无限制」',
+						keySlot?.source === '自动检测' ? `当前生效：自动检测，末四位 ${keySlot.tail}` : undefined,
 					], h('input', {
 						id: 'baifan-auto-detect',
 						className: 'dshBaifanBalanceSet_check',
 						type: 'checkbox',
 						checked: form.autoDetectKey,
 						onChange: (event) => setForm({ ...form, autoDetectKey: event.target.checked }),
-					}))),
+					})),
+
+					form.autoDetectKey === false
+						? row('baifan-api-key', '手动指定 api key', [
+							slotHint(keySlot, loading),
+							'关掉自动检测后用这条；留空则页面下方回退显示账户余额',
+						], credentialField('baifan-api-key', form.apiKey, 'apiKey', 'sk-... 留空不改动'), true)
+						: null),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '显示与个性化'),
@@ -638,14 +661,23 @@ window.__ModuleLoader__.load({
 						checked: form.showIcon,
 						onChange: (event) => setForm({ ...form, showIcon: event.target.checked }),
 					})),
-					row('baifan-low', '低余额提醒（金额）', '低于这个值变红，填 0 关闭', h('input', {
-						id: 'baifan-low',
+					row('baifan-low-account', '账户余额提醒（金额）', '账户余额低于这个值变红，填 0 关闭', h('input', {
+						id: 'baifan-low-account',
 						className: 'dshBaifanBalanceSet_input',
 						type: 'number',
 						min: 0,
 						step: 1,
-						value: form.lowBalance,
-						onChange: update('lowBalance'),
+						value: form.lowBalanceAccount,
+						onChange: update('lowBalanceAccount'),
+					})),
+					row('baifan-low-key', 'key 额度提醒（金额）', 'key 额度低于这个值变红，填 0 关闭', h('input', {
+						id: 'baifan-low-key',
+						className: 'dshBaifanBalanceSet_input',
+						type: 'number',
+						min: 0,
+						step: 1,
+						value: form.lowBalanceKey,
+						onChange: update('lowBalanceKey'),
 					}))),
 
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
