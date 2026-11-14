@@ -28,17 +28,18 @@
 2. DSH → **插件** → **Add plugin** → 选中解压出来的目录
 3. 刷新页面（Ctrl+R）
 
-**方式二：npm**
+**方式二：直接用包名（npm）**
 
-```bash
-npm i -g dsh-baifan-balance   # 或者直接把包名交给 Add plugin
-```
+DSH → **插件** → **Add plugin** → 填 `dsh-baifan-balance`。
 
-**方式三：源码**
+插件管理器会通过 pnpm 从 registry 安装，并把精确版本写进 profile 依赖；之后在插件页可以直接升级/卸载。
+
+**方式三：从 git 或源码**
+
+Add plugin 同样接受 git 地址，也可以先 clone 再选目录：
 
 ```bash
 git clone https://github.com/wanderlusty/dsh-baifan-balance.git
-# 然后 Add plugin 选这个目录
 ```
 
 ---
