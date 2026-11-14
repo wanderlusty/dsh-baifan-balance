@@ -185,6 +185,15 @@ window.__ModuleLoader__.load({
 			return translate(t, reading.scope === 'account' ? 'balance.scope.account' : 'balance.scope.token')
 		}
 
+		/** 数值前的口径标记：账户后面跟用户名，额度后面跟 key 名。 */
+		function markOf(reading, t) {
+			const word = translate(t, reading.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token')
+			const name = typeof reading.credential_name === 'string' && reading.credential_name.length > 0
+				? reading.credential_name
+				: undefined
+			return name === undefined ? word : `${word} ${name}`
+		}
+
 		/** 把一次读数压成提示语；detail 决定给多少内容。 */
 		function describe(reading, t, detail) {
 			const parts = [reading.site]
@@ -222,7 +231,7 @@ window.__ModuleLoader__.load({
 				unconfigured,
 				failed: payload !== undefined && !ok,
 				state: payload === undefined ? 'loading' : (ok ? 'ok' : 'error'),
-				mark: ok ? translate(t, reading.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token') : undefined,
+				mark: ok ? markOf(reading, t) : undefined,
 				amount: ok
 					? (unlimited ? translate(t, 'balance.unlimited') : formatMoney(reading.remaining, reading.currency))
 					: undefined,
