@@ -22,6 +22,7 @@ window.__ModuleLoader__.load({
 			showIcon: true,
 			accent: 'auto',
 			lowBalance: 0,
+			autoDetectKey: true,
 		}
 
 		const FALLBACK = {
@@ -36,7 +37,7 @@ window.__ModuleLoader__.load({
 			'balance.low': '低于提醒线',
 			'balance.scope.token': 'key 额度',
 			'balance.scope.account': '账户余额',
-			'balance.mark.token': '额度',
+			'balance.mark.token': 'key额度',
 			'balance.mark.account': '账户',
 		}
 
@@ -398,6 +399,7 @@ window.__ModuleLoader__.load({
 				showIcon: DEFAULT_SETTINGS.showIcon,
 				accent: DEFAULT_SETTINGS.accent,
 				lowBalance: '0',
+				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
 			})
 			const [info, setInfo] = useState(undefined)
 			const [message, setMessage] = useState(undefined)
@@ -425,6 +427,7 @@ window.__ModuleLoader__.load({
 						showIcon: settings.showIcon,
 						accent: settings.accent,
 						lowBalance: String(settings.lowBalance),
+						autoDetectKey: settings.autoDetectKey !== false,
 					})
 				} catch (error) {
 					if (alive.current) setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
@@ -467,6 +470,7 @@ window.__ModuleLoader__.load({
 					showIcon: form.showIcon,
 					accent: form.accent,
 					lowBalance: form.lowBalance,
+					autoDetectKey: form.autoDetectKey,
 				}
 				if (form.accessToken !== '') payload.accessToken = form.accessToken
 				if (form.apiKey !== '') payload.apiKey = form.apiKey
@@ -550,7 +554,8 @@ window.__ModuleLoader__.load({
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '凭据'),
 					row('baifan-access-token', '访问令牌（账户口径）', [
 						slotHint(accountSlot, loading),
-						'查账户完整余额，还能看到账号、分组、请求数；头像上方显示的就是它',
+						{ text: '账户完整余额', strong: true },
+						'头像上方显示的就是它',
 						{ text: '推荐：安全与访问 → 访问令牌 → 创建访问令牌', strong: true },
 					], h('input', {
 						id: 'baifan-access-token',
@@ -563,7 +568,8 @@ window.__ModuleLoader__.load({
 					})),
 					row('baifan-api-key', 'api key（单 key 口径，可选）', [
 						slotHint(keySlot, loading),
-						'查这个 key 自己被设的额度；不限额的 key 会显示「无限制」；页面下方显示的是它',
+						'这个 key 自己被设的额度；页面下方显示的就是它',
+						'不限额的 key 会显示「无限制」',
 					], h('input', {
 						id: 'baifan-api-key',
 						className: 'dshBaifanBalanceSet_input',
@@ -572,6 +578,16 @@ window.__ModuleLoader__.load({
 						placeholder: 'sk-... 留空不改动',
 						autoComplete: 'off',
 						onChange: update('apiKey'),
+					})),
+					row('baifan-auto-detect', '自动检测当前使用的 key', [
+						'开启后自动用 DSH 正在使用的那条 api key，不用自己设置',
+						'关掉后页面下方只显示上面手动填的 api key',
+					], h('input', {
+						id: 'baifan-auto-detect',
+						className: 'dshBaifanBalanceSet_check',
+						type: 'checkbox',
+						checked: form.autoDetectKey,
+						onChange: (event) => setForm({ ...form, autoDetectKey: event.target.checked }),
 					}))),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
@@ -681,7 +697,7 @@ window.__ModuleLoader__.load({
 						'balance.low': '低于提醒线',
 						'balance.scope.token': 'key 额度',
 						'balance.scope.account': '账户余额',
-						'balance.mark.token': '额度',
+						'balance.mark.token': 'key额度',
 						'balance.mark.account': '账户',
 					},
 					en: {
@@ -696,7 +712,7 @@ window.__ModuleLoader__.load({
 						'balance.low': 'Below your alert threshold',
 						'balance.scope.token': 'Key quota',
 						'balance.scope.account': 'Account balance',
-						'balance.mark.token': 'Key',
+						'balance.mark.token': 'Key quota',
 						'balance.mark.account': 'Account',
 					},
 				}), 'baifan-balance: locale')
