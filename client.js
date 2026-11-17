@@ -597,7 +597,8 @@ window.__ModuleLoader__.load({
 					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
 
 					row('baifan-auto-detect', '自动检测当前使用 key 的限额', [
-						'页面下方显示的就是它；不限额的 key 会显示「无限制」',
+						'页面下方显示的就是这条 key',
+						'如果这条 key 在站点里开了「允许查询用户额度」，这里会直接显示账户余额',
 						keySlot?.source === '自动检测' ? `当前生效：自动检测，末四位 ${keySlot.tail}` : undefined,
 					], h('input', {
 						id: 'baifan-auto-detect',
