@@ -60,6 +60,14 @@ window.__ModuleLoader__.load({
 			return time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
 		}
 
+		function formatTokenCount(value) {
+			const n = Number(value) || 0
+			if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`
+			if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`
+			if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`
+			return String(n)
+		}
+
 		/** 强调色只影响图标颜色，正文始终跟随主题。 */
 		function accentOf(accent) {
 			if (accent === 'brand') return 'var(--dsw-alias-brand-primary)'
@@ -371,8 +379,8 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_label{font-weight:500}
 .dshBaifanBalanceSet_hint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dshBaifanBalanceSet_hintStrong{font-size:12px;color:var(--dsw-alias-brand-primary);font-weight:500}
-.dshBaifanBalanceSet_control{flex:none;width:240px;display:flex;justify-content:flex-end;align-items:center}
-.dshBaifanBalanceSet_controlWide{width:300px;gap:6px}
+.dshBaifanBalanceSet_control{flex:none;width:260px;display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.dshBaifanBalanceSet_controlWide{width:260px;gap:6px}
 .dshBaifanBalanceSet_inlineSave{flex:none;height:30px;padding:0 10px;font:inherit;font-size:12px;
   border:1px solid transparent;border-radius:var(--dsw-radius-sm);cursor:pointer;
   background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:500}
@@ -656,6 +664,9 @@ window.__ModuleLoader__.load({
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
 						h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(data.totals.count)),
 						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '请求数')),
+					h('div', { className: 'dshBaifanBalanceSet_stat' },
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatTokenCount(data.totals.tokens)),
+						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, 'tokens')),
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
 						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.average, data.currency)),
 						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '平均每次')))
