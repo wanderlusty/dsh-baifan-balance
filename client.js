@@ -66,6 +66,13 @@ window.__ModuleLoader__.load({
 			return 'currentColor'
 		}
 
+		/** 看板里的柱子和色条：auto 时用品牌色，否则跟随强调色。 */
+		function chartColor(accent) {
+			if (accent === 'success') return 'var(--dsw-alias-state-success-primary)'
+			if (accent === 'warn') return 'var(--dsw-alias-state-warn-primary)'
+			return 'var(--dsw-alias-brand-primary)'
+		}
+
 		// ---- 共享设置：一次取，多处用；保存后立即广播 ----
 		const settingsStore = { value: undefined, inFlight: undefined, listeners: new Set() }
 
@@ -371,6 +378,20 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_notes{display:flex;flex-direction:column;gap:4px;padding-top:8px;
   border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dshBaifanBalanceSet_notesCode{font-family:var(--dsw-font-family-code,ui-monospace,monospace)}
+.dshBaifanBalanceSet_boardHead{display:flex;align-items:center;gap:10px;padding:2px 0}
+.dshBaifanBalanceSet_boardToggle{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;
+  background:transparent;padding:2px 0;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.dshBaifanBalanceSet_chevron{flex:none;width:10px;font-size:10px;color:var(--dsw-alias-label-tertiary)}
+.dshBaifanBalanceSet_boardTitle{flex:none;font-size:12px;font-weight:600;
+  color:var(--dsw-alias-label-tertiary);letter-spacing:.04em}
+.dshBaifanBalanceSet_boardSummary{font-size:12px;color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshBaifanBalanceSet_segmented{display:flex;gap:2px;flex:none}
+.dshBaifanBalanceSet_segment{height:22px;padding:0 8px;border:1px solid var(--dsw-alias-border-l1);
+  background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:11px;
+  border-radius:var(--dsw-radius-sm);cursor:pointer}
+.dshBaifanBalanceSet_segment[data-active=true]{background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}
 .dshBaifanBalanceSet_board{display:flex;flex-direction:column;gap:16px;padding-top:10px;
   border-top:1px solid var(--dsw-alias-border-l1)}
 .dshBaifanBalanceSet_block{display:flex;flex-direction:column;gap:6px}
@@ -456,6 +477,16 @@ window.__ModuleLoader__.load({
 			const [reading, setReading] = useState(undefined)
 			const [usage, setUsage] = useState(undefined)
 			const [usageBusy, setUsageBusy] = useState(false)
+			// 折叠状态与所选天数记在本地，下次打开设置页保持原样。
+			const [boardOpen, setBoardOpen] = useState(() => {
+				try { return window.localStorage.getItem('baifan-board-open') === '1' } catch { return false }
+			})
+			const [boardDays, setBoardDays] = useState(() => {
+				try {
+					const stored = Number(window.localStorage.getItem('baifan-board-days'))
+					return [7, 14, 30].includes(stored) ? stored : 7
+				} catch { return 7 }
+			})
 			const alive = useRef(true)
 			// 订阅共享读数：据它判断当前 key 是不是「只能查 key 额度」。
 			const live = useSummary(DEFAULT_SETTINGS.refreshSeconds)
@@ -588,10 +619,10 @@ window.__ModuleLoader__.load({
 			}, [load])
 
 			/** 拉一次用量看板数据。 */
-			const loadUsage = useCallback(async () => {
+			const loadUsage = useCallback(async (days) => {
 				setUsageBusy(true)
 				try {
-					const response = await fetch('/baifan-balance/usage?days=7', { headers: { accept: 'application/json' } })
+					const response = await fetch(`/baifan-balance/usage?days=${days}`, { headers: { accept: 'application/json' } })
 					const data = await response.json()
 					if (alive.current) setUsage(data)
 				} catch (error) {
@@ -601,12 +632,26 @@ window.__ModuleLoader__.load({
 				}
 			}, [])
 
-			useEffect(() => { void loadUsage() }, [loadUsage])
+			useEffect(() => { void loadUsage(boardDays) }, [loadUsage, boardDays])
+
+			/** 折叠开关；顺手记到本地。 */
+			const toggleBoard = () => {
+				const next = !boardOpen
+				setBoardOpen(next)
+				try { window.localStorage.setItem('baifan-board-open', next ? '1' : '0') } catch { /* 忽略 */ }
+			}
+
+			/** 切换统计天数。 */
+			const pickDays = (days) => {
+				setBoardDays(days)
+				try { window.localStorage.setItem('baifan-board-days', String(days)) } catch { /* 忽略 */ }
+			}
 
 			/** 用量看板：概览 + 每日柱状 + 模型占比 + 最近请求。 */
 			const board = (data) => {
 				const maxDay = Math.max(...data.daily.map((day) => day.amount), 0.000001)
 				const maxModel = Math.max(...data.models.map((item) => item.amount), 0.000001)
+				const barColor = chartColor(form.accent)
 
 				const stats = h('div', { className: 'dshBaifanBalanceSet_stats' },
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
@@ -631,7 +676,10 @@ window.__ModuleLoader__.load({
 					h('div', {
 						className: 'dshBaifanBalanceSet_bar',
 						'data-empty': day.amount <= 0 ? 'true' : 'false',
-						style: { height: `${day.amount <= 0 ? 2 : Math.max(4, (day.amount / maxDay) * 62)}px` },
+						style: {
+							height: `${day.amount <= 0 ? 2 : Math.max(4, (day.amount / maxDay) * 62)}px`,
+							background: day.amount <= 0 ? undefined : barColor,
+						},
 						title: `${day.date}　${formatMoney(day.amount, data.currency)}　${day.count} 次`,
 					}),
 					h('span', { className: 'dshBaifanBalanceSet_barLabel' }, day.date.slice(5))))
@@ -645,7 +693,7 @@ window.__ModuleLoader__.load({
 				const modelRows = data.models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
 					h('div', {
 						className: 'dshBaifanBalanceSet_modelFillBg',
-						style: { width: `${Math.max(1, (item.amount / maxModel) * 100)}%` },
+						style: { width: `${Math.max(1, (item.amount / maxModel) * 100)}%`, background: barColor },
 					}),
 					h('span', { className: 'dshBaifanBalanceSet_modelName', title: item.model }, item.model),
 					h('span', { className: 'dshBaifanBalanceSet_modelAmount' }, formatMoney(item.amount, data.currency)),
@@ -805,7 +853,7 @@ window.__ModuleLoader__.load({
 					h('option', { value: 'compact' }, '简洁'),
 					h('option', { value: 'standard' }, '标准'),
 					h('option', { value: 'detailed' }, '详细'))),
-					row('baifan-accent', '强调色', '只染硬币图标', h('select', {
+					row('baifan-accent', '强调色', '图标与看板配色', h('select', {
 						id: 'baifan-accent',
 						className: 'dshBaifanBalanceSet_input',
 						value: form.accent,
@@ -842,14 +890,40 @@ window.__ModuleLoader__.load({
 					}))),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
-					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '用量看板 · 近 7 天'),
-					usage === undefined
-						? h('div', { className: 'dshBaifanBalanceSet_notes' },
-							h('span', null, usageBusy ? '正在读取…' : '暂无数据'))
-						: usage.ok !== true
+					h('div', { className: 'dshBaifanBalanceSet_boardHead' },
+						h('button', {
+							type: 'button',
+							className: 'dshBaifanBalanceSet_boardToggle',
+							onClick: toggleBoard,
+							'aria-expanded': boardOpen ? 'true' : 'false',
+						},
+						h('span', { className: 'dshBaifanBalanceSet_chevron' }, boardOpen ? '▾' : '▸'),
+						h('span', { className: 'dshBaifanBalanceSet_boardTitle' }, '用量看板'),
+						h('span', { className: 'dshBaifanBalanceSet_boardSummary' },
+							usage === undefined
+								? (usageBusy ? '正在读取…' : '—')
+								: (usage.ok === true
+									? `近 ${usage.days} 天　${formatMoney(usage.totals.amount, usage.currency)}　${usage.totals.count} 次`
+									: '不可用'))),
+						boardOpen
+							? h('div', { className: 'dshBaifanBalanceSet_segmented' },
+								[7, 14, 30].map((days) => h('button', {
+									key: days,
+									type: 'button',
+									className: 'dshBaifanBalanceSet_segment',
+									'data-active': boardDays === days ? 'true' : 'false',
+									onClick: () => pickDays(days),
+								}, `${days} 天`)))
+							: null),
+					boardOpen
+						? (usage === undefined
 							? h('div', { className: 'dshBaifanBalanceSet_notes' },
-								h('span', null, String(usage.error ?? '用量数据暂时不可用')))
-							: board(usage)),
+								h('span', null, usageBusy ? '正在读取…' : '暂无数据'))
+							: usage.ok !== true
+								? h('div', { className: 'dshBaifanBalanceSet_notes' },
+									h('span', null, String(usage.error ?? '用量数据暂时不可用')))
+								: board(usage))
+						: null),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '其他入口'),
