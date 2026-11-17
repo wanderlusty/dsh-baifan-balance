@@ -24,6 +24,7 @@ window.__ModuleLoader__.load({
 			lowBalanceAccount: 1,
 			lowBalanceKey: 1,
 			autoDetectKey: true,
+			autoDetectRef: '',
 		}
 
 		const FALLBACK = {
@@ -477,6 +478,7 @@ window.__ModuleLoader__.load({
 				lowBalanceAccount: '1',
 				lowBalanceKey: '1',
 				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
+				autoDetectRef: DEFAULT_SETTINGS.autoDetectRef,
 			})
 			const [info, setInfo] = useState(undefined)
 			// 载入时的快照：用来判断哪个字段被改过，改过才显示行内「保存」。
@@ -524,6 +526,7 @@ window.__ModuleLoader__.load({
 						lowBalanceAccount: String(settings.lowBalanceAccount ?? 0),
 						lowBalanceKey: String(settings.lowBalanceKey ?? 0),
 						autoDetectKey: settings.autoDetectKey !== false,
+						autoDetectRef: settings.autoDetectRef ?? '',
 					}
 					setForm(next)
 					setInitial(next)
@@ -833,7 +836,9 @@ window.__ModuleLoader__.load({
 					row('baifan-auto-detect', '自动检测当前使用 key 的限额', [
 						'页面下方显示的就是这条 key',
 						'如果这条 key 在站点里开了「允许查询用户额度」，这里会直接显示账户余额',
-						keySlot?.source === '自动检测' ? `当前生效：自动检测，末四位 ${keySlot.tail}` : undefined,
+						keySlot?.configured === true
+							? `当前生效：${keySlot.ref ? `取自 ${keySlot.ref}，` : ''}末四位 ${keySlot.tail}`
+							: undefined,
 					], h('input', {
 						id: 'baifan-auto-detect',
 						className: 'dshBaifanBalanceSet_check',
@@ -841,6 +846,21 @@ window.__ModuleLoader__.load({
 						checked: form.autoDetectKey,
 						onChange: toggleField('autoDetectKey'),
 					})),
+
+					// DSH 里可能同时存了好几条提供商的 key，让用户选准是哪条。
+					form.autoDetectKey && (info?.autoRefs?.length ?? 0) > 0
+						? row('baifan-auto-ref', '自动检测用哪条凭据', '选错了会显示另一条 key 的额度，选中即生效', h('select', {
+							id: 'baifan-auto-ref',
+							className: 'dshBaifanBalanceSet_input',
+							value: form.autoDetectRef,
+							onChange: (event) => {
+								setForm({ ...form, autoDetectRef: event.target.value })
+								void submit({ autoDetectRef: event.target.value })
+							},
+						},
+						h('option', { value: '' }, '自动（按默认顺序）'),
+						info.autoRefs.map((item) => h('option', { key: item.ref, value: item.ref }, `${item.ref}　…${item.tail}`))))
+						: null,
 
 					form.autoDetectKey === false
 						? row('baifan-api-key', '手动指定 api key', [
