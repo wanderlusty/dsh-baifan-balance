@@ -418,6 +418,9 @@ window.__ModuleLoader__.load({
 			const [busy, setBusy] = useState(false)
 			const [reading, setReading] = useState(undefined)
 			const alive = useRef(true)
+			// 订阅共享读数：据它判断当前 key 是不是「只能查 key 额度」。
+			const live = useSummary(DEFAULT_SETTINGS.refreshSeconds)
+			const keyIsTokenScope = live.payload?.key !== undefined && live.payload.key.scope === 'token'
 			useEffect(() => () => { alive.current = false }, [])
 
 			const load = useCallback(async () => {
@@ -513,6 +516,35 @@ window.__ModuleLoader__.load({
 					if (alive.current) setBusy(false)
 				}
 			}, [])
+
+			/** 一键把当前 key 的「允许查询用户额度」打开，之后 sk- 就能直接看到账户余额。 */
+			const authorize = useCallback(async () => {
+				setBusy(true)
+				setMessage(undefined)
+				try {
+					const response = await fetch('/baifan-balance/authorize-key', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: '{}',
+					})
+					const data = await response.json()
+					if (data.ok !== true) throw new Error(data.error ?? '操作失败')
+					if (alive.current) {
+						setMessage({
+							kind: 'ok',
+							text: data.already === true
+								? `「${data.name}」本来就是开启状态`
+								: `已为「${data.name}」开启账户额度查询`,
+						})
+					}
+					await loadSummary(true)
+					await load()
+				} catch (error) {
+					if (alive.current) setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
+				} finally {
+					if (alive.current) setBusy(false)
+				}
+			}, [load])
 
 			const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
 			const loading = info === undefined
@@ -693,6 +725,9 @@ window.__ModuleLoader__.load({
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_primary', onClick: save, disabled: busy }, '保存'),
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: probe, disabled: busy }, '测试查询'),
+					keyIsTokenScope && accountSlot?.configured === true
+						? h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: authorize, disabled: busy }, '一键开启账户额度查询')
+						: null,
 					accountSlot?.configured === true
 						? h('button', {
 							type: 'button',
