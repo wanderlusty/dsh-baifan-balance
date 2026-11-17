@@ -245,11 +245,6 @@ window.__ModuleLoader__.load({
 				used: ok && !unlimited && settings.detail === 'detailed'
 					? `${translate(t, 'balance.used')} ${formatMoney(reading.used, reading.currency)}`
 					: undefined,
-				// 侧栏那个位置空间有限：只放「已用」和口径词，用户名留在悬停里。
-				usedAlways: ok && !unlimited
-					? `${translate(t, 'balance.used')} ${formatMoney(reading.used, reading.currency)}`
-					: undefined,
-				markWord: ok ? translate(t, reading.scope === 'account' ? 'balance.mark.account' : 'balance.mark.token') : undefined,
 				description: low ? `⚠ ${translate(t, 'balance.low')} · ${description}` : description,
 			}
 		}
@@ -342,9 +337,7 @@ window.__ModuleLoader__.load({
 			h('style', null, CSS),
 			settings.showIcon ? CoinIcon() : null,
 			wide && label !== '' ? h('span', { className: 'dshBaifanBalance_label' }, label) : null,
-			wide && view.usedAlways !== undefined ? h('span', { className: 'dshBaifanBalance_sep' }, '·') : null,
-			wide && view.usedAlways !== undefined ? h('span', { className: 'dshBaifanBalance_label' }, view.usedAlways) : null,
-			wide && view.markWord !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.markWord) : null)
+			wide && view.mark !== undefined ? h('span', { className: 'dshBaifanBalance_scope' }, view.mark) : null)
 		}
 
 		// 设置页走「标签在左、控件在右」的行式布局，行间用发丝线分隔，和宿主设置页一致。
