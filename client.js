@@ -420,7 +420,8 @@ window.__ModuleLoader__.load({
 			const alive = useRef(true)
 			// 订阅共享读数：据它判断当前 key 是不是「只能查 key 额度」。
 			const live = useSummary(DEFAULT_SETTINGS.refreshSeconds)
-			const keyIsTokenScope = live.payload?.key !== undefined && live.payload.key.scope === 'token'
+			// 只有「这条 key 还不能查账户额度」时才提示去授权。
+			const keyNeedsAuthorize = live.payload?.key !== undefined && live.payload.key.account_quota === undefined
 			useEffect(() => () => { alive.current = false }, [])
 
 			const load = useCallback(async () => {
@@ -725,7 +726,7 @@ window.__ModuleLoader__.load({
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_primary', onClick: save, disabled: busy }, '保存'),
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: probe, disabled: busy }, '测试查询'),
-					keyIsTokenScope && accountSlot?.configured === true
+					keyNeedsAuthorize && accountSlot?.configured === true
 						? h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: authorize, disabled: busy }, '一键开启账户额度查询')
 						: null,
 					accountSlot?.configured === true
