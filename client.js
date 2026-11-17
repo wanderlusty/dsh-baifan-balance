@@ -371,35 +371,39 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_notes{display:flex;flex-direction:column;gap:4px;padding-top:8px;
   border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dshBaifanBalanceSet_notesCode{font-family:var(--dsw-font-family-code,ui-monospace,monospace)}
-.dshBaifanBalanceSet_board{display:flex;flex-direction:column;gap:14px;padding-top:10px;
+.dshBaifanBalanceSet_board{display:flex;flex-direction:column;gap:16px;padding-top:10px;
   border-top:1px solid var(--dsw-alias-border-l1)}
+.dshBaifanBalanceSet_block{display:flex;flex-direction:column;gap:6px}
+.dshBaifanBalanceSet_blockLabel{font-size:11px;color:var(--dsw-alias-label-tertiary);letter-spacing:.04em}
 .dshBaifanBalanceSet_stats{display:flex;gap:28px;flex-wrap:wrap}
 .dshBaifanBalanceSet_stat{display:flex;flex-direction:column;gap:2px}
 .dshBaifanBalanceSet_statValue{font-size:15px;font-weight:600;color:var(--dsw-alias-label-primary);
   font-variant-numeric:tabular-nums;line-height:1.25}
 .dshBaifanBalanceSet_statLabel{font-size:11px;color:var(--dsw-alias-label-tertiary)}
-.dshBaifanBalanceSet_chart{display:flex;align-items:flex-end;gap:0;height:76px;
-  border-bottom:1px solid var(--dsw-alias-border-l1);padding-bottom:2px}
-.dshBaifanBalanceSet_barCol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  gap:4px;min-width:0;height:100%}
-.dshBaifanBalanceSet_barTrack{width:100%;display:flex;align-items:flex-end;justify-content:center;flex:1}
-.dshBaifanBalanceSet_bar{width:20px;max-width:60%;border-radius:3px 3px 0 0;
-  background:var(--dsw-alias-brand-primary);opacity:.75}
-.dshBaifanBalanceSet_bar[data-empty=true]{background:var(--dsw-alias-border-l1);opacity:.6}
-.dshBaifanBalanceSet_barLabel{font-size:10px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;height:12px}
-.dshBaifanBalanceSet_modelRow{display:flex;align-items:center;gap:10px;font-size:12px}
-.dshBaifanBalanceSet_modelName{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;color:var(--dsw-alias-label-secondary)}
-.dshBaifanBalanceSet_modelTrack{flex:none;width:88px;height:6px;border-radius:3px;
-  background:var(--dsw-alias-bg-layer-2);overflow:hidden}
-.dshBaifanBalanceSet_modelFill{height:100%;background:var(--dsw-alias-brand-primary);opacity:.7}
-.dshBaifanBalanceSet_modelAmount{flex:none;width:92px;text-align:right;font-variant-numeric:tabular-nums;
-  color:var(--dsw-alias-label-primary)}
-.dshBaifanBalanceSet_modelCount{flex:none;width:56px;text-align:right;color:var(--dsw-alias-label-tertiary);
-  font-variant-numeric:tabular-nums}
-.dshBaifanBalanceSet_recent{display:flex;flex-direction:column;gap:5px;font-size:12px;
+.dshBaifanBalanceSet_chart{display:flex;align-items:flex-end;gap:8px;height:92px;
+  padding-bottom:4px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.dshBaifanBalanceSet_barCol{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-end;gap:3px;min-width:0;height:100%}
+.dshBaifanBalanceSet_barValue{font-size:9px;line-height:1;color:var(--dsw-alias-label-tertiary);
+  font-variant-numeric:tabular-nums;height:10px}
+.dshBaifanBalanceSet_bar{width:100%;max-width:26px;border-radius:3px 3px 0 0;
+  background:var(--dsw-alias-brand-primary);opacity:.85}
+.dshBaifanBalanceSet_bar[data-empty=true]{background:var(--dsw-alias-border-l1);opacity:.7}
+.dshBaifanBalanceSet_barLabel{font-size:10px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+.dshBaifanBalanceSet_modelRow{position:relative;display:flex;align-items:center;gap:10px;
+  padding:3px 6px;border-radius:4px;overflow:hidden;font-size:12px;line-height:1.5}
+.dshBaifanBalanceSet_modelList{display:flex;flex-direction:column;gap:2px}
+.dshBaifanBalanceSet_modelFillBg{position:absolute;top:0;bottom:0;left:0;
+  background:var(--dsw-alias-brand-primary);opacity:.1}
+.dshBaifanBalanceSet_modelName{position:relative;flex:1 1 auto;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}
+.dshBaifanBalanceSet_modelAmount{position:relative;flex:none;width:78px;text-align:right;
+  font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary)}
+.dshBaifanBalanceSet_modelCount{position:relative;flex:none;width:56px;text-align:right;
   color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
-.dshBaifanBalanceSet_recentRow{display:flex;gap:10px;align-items:baseline}
+.dshBaifanBalanceSet_recent{display:flex;flex-direction:column;gap:3px;font-size:12px;
+  color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.dshBaifanBalanceSet_recentRow{display:flex;gap:10px;align-items:baseline;padding:2px 6px;border-radius:4px}
 .dshBaifanBalanceSet_recentTime{width:40px;flex:none}
 .dshBaifanBalanceSet_recentModel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;color:var(--dsw-alias-label-secondary)}
@@ -603,54 +607,70 @@ window.__ModuleLoader__.load({
 			const board = (data) => {
 				const maxDay = Math.max(...data.daily.map((day) => day.amount), 0.000001)
 				const maxModel = Math.max(...data.models.map((item) => item.amount), 0.000001)
-				return h('div', { className: 'dshBaifanBalanceSet_board' },
-					h('div', { className: 'dshBaifanBalanceSet_stats' },
-						h('div', { className: 'dshBaifanBalanceSet_stat' },
-							h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.amount, data.currency)),
-							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, `近 ${data.days} 天消耗`)),
-						h('div', { className: 'dshBaifanBalanceSet_stat' },
-							h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(data.totals.count)),
-							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '请求数')),
-						h('div', { className: 'dshBaifanBalanceSet_stat' },
-							h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.average, data.currency)),
-							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '平均每次'))),
+
+				const stats = h('div', { className: 'dshBaifanBalanceSet_stats' },
+					h('div', { className: 'dshBaifanBalanceSet_stat' },
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.amount, data.currency)),
+						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, `近 ${data.days} 天消耗`)),
+					h('div', { className: 'dshBaifanBalanceSet_stat' },
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(data.totals.count)),
+						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '请求数')),
+					h('div', { className: 'dshBaifanBalanceSet_stat' },
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.average, data.currency)),
+						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '平均每次')))
+
+				const barLabel = (amount) => {
+					if (amount >= 10) return amount.toFixed(0)
+					if (amount >= 1) return amount.toFixed(1)
+					if (amount > 0) return amount.toFixed(2)
+					return ''
+				}
+
+				const bars = data.daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
+					h('span', { className: 'dshBaifanBalanceSet_barValue' }, barLabel(day.amount)),
+					h('div', {
+						className: 'dshBaifanBalanceSet_bar',
+						'data-empty': day.amount <= 0 ? 'true' : 'false',
+						style: { height: `${day.amount <= 0 ? 2 : Math.max(4, (day.amount / maxDay) * 62)}px` },
+						title: `${day.date}　${formatMoney(day.amount, data.currency)}　${day.count} 次`,
+					}),
+					h('span', { className: 'dshBaifanBalanceSet_barLabel' }, day.date.slice(5))))
+
+				const chartBlock = h('div', { className: 'dshBaifanBalanceSet_block' },
+					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '每日消耗'),
 					data.daily.length === 0
 						? h('span', { className: 'dshBaifanBalanceSet_hint' }, '这段时间没有消费记录')
-						: h('div', { className: 'dshBaifanBalanceSet_chart' },
-							data.daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
-								h('div', { className: 'dshBaifanBalanceSet_barTrack' },
-									h('div', {
-										className: 'dshBaifanBalanceSet_bar',
-										'data-empty': day.amount <= 0 ? 'true' : 'false',
-										style: { height: `${day.amount <= 0 ? 2 : Math.max(4, (day.amount / maxDay) * 46)}px` },
-										title: `${day.date}　${formatMoney(day.amount, data.currency)}　${day.count} 次`,
-									})),
-								h('span', { className: 'dshBaifanBalanceSet_barLabel' }, day.date.slice(5))))),
-					data.models.length === 0
-						? null
-						: h('div', { style: { display: 'flex', flexDirection: 'column', gap: '7px' } },
-							data.models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
-								h('span', { className: 'dshBaifanBalanceSet_modelName', title: item.model }, item.model),
-								h('div', { className: 'dshBaifanBalanceSet_modelTrack' },
-									h('div', {
-										className: 'dshBaifanBalanceSet_modelFill',
-										style: { width: `${Math.max(2, (item.amount / maxModel) * 100)}%` },
-									})),
-								h('span', { className: 'dshBaifanBalanceSet_modelAmount' }, formatMoney(item.amount, data.currency)),
-								h('span', { className: 'dshBaifanBalanceSet_modelCount' }, `${item.count} 次`)))),
-					data.recent.length === 0
-						? null
-						: h('div', { className: 'dshBaifanBalanceSet_recent' },
-							data.recent.map((item, index) => h('div', {
-								className: 'dshBaifanBalanceSet_recentRow',
-								key: `${item.at}-${index}`,
-							},
-							h('span', { className: 'dshBaifanBalanceSet_recentTime' }, formatClock(item.at)),
-							h('span', {
-								className: 'dshBaifanBalanceSet_recentModel',
-								title: `${item.token} · ${item.prompt_tokens}→${item.completion_tokens} tok · ${item.use_time}s`,
-							}, item.model),
-							h('span', { className: 'dshBaifanBalanceSet_recentAmount' }, formatMoney(item.amount, data.currency))))))
+						: h('div', { className: 'dshBaifanBalanceSet_chart' }, bars))
+
+				const modelRows = data.models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
+					h('div', {
+						className: 'dshBaifanBalanceSet_modelFillBg',
+						style: { width: `${Math.max(1, (item.amount / maxModel) * 100)}%` },
+					}),
+					h('span', { className: 'dshBaifanBalanceSet_modelName', title: item.model }, item.model),
+					h('span', { className: 'dshBaifanBalanceSet_modelAmount' }, formatMoney(item.amount, data.currency)),
+					h('span', { className: 'dshBaifanBalanceSet_modelCount' }, `${item.count} 次`)))
+
+				const modelBlock = data.models.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
+					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '按模型'),
+					h('div', { className: 'dshBaifanBalanceSet_modelList' }, modelRows))
+
+				const recentRows = data.recent.map((item, index) => h('div', {
+					className: 'dshBaifanBalanceSet_recentRow',
+					key: `${item.at}-${index}`,
+				},
+				h('span', { className: 'dshBaifanBalanceSet_recentTime' }, formatClock(item.at)),
+				h('span', {
+					className: 'dshBaifanBalanceSet_recentModel',
+					title: `${item.token} · ${item.prompt_tokens}→${item.completion_tokens} tok · ${item.use_time}s`,
+				}, item.model),
+				h('span', { className: 'dshBaifanBalanceSet_recentAmount' }, formatMoney(item.amount, data.currency))))
+
+				const recentBlock = data.recent.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
+					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '最近请求'),
+					h('div', { className: 'dshBaifanBalanceSet_recent' }, recentRows))
+
+				return h('div', { className: 'dshBaifanBalanceSet_board' }, stats, chartBlock, modelBlock, recentBlock)
 			}
 
 			const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
