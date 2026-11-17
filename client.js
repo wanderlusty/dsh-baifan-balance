@@ -40,6 +40,7 @@ window.__ModuleLoader__.load({
 			'balance.scope.account': '账户余额',
 			'balance.mark.token': 'key额度',
 			'balance.mark.account': '账户',
+			'balance.keyUnavailable': 'key 查不到',
 		}
 
 		function translate(t, key) {
@@ -179,14 +180,19 @@ window.__ModuleLoader__.load({
 			}
 		}
 
-		/** 某个位置该拿哪个口径：头像要账户，下方要 key；缺了就用另一个顶上。 */
+		/** 某个位置该拿哪个口径：头像要账户，下方要 key。
+		 *  只有「根本没配 key」才回退到账户；key 配了但查不通必须如实报错，不能假装是 key。 */
 		function pick(payload, surface) {
 			if (payload === undefined) return { reading: undefined, error: undefined }
 			const wantAccount = surface === 'avatar'
 			const preferred = wantAccount ? payload.account : payload.key
-			const fallback = wantAccount ? payload.key : payload.account
 			const error = wantAccount ? payload.accountError : payload.keyError
-			return { reading: preferred ?? fallback, error }
+			if (preferred !== undefined) return { reading: preferred, error: undefined }
+			// 下方位置：key 缺失时，只有「未配置」才允许退回账户口径。
+			if (!wantAccount && payload.keyMissing === true) {
+				return { reading: payload.account, error: payload.accountError }
+			}
+			return { reading: undefined, error }
 		}
 
 		/** 数值说的是什么：这个 key 的额度，还是整个账户的余额。 */
@@ -298,7 +304,8 @@ window.__ModuleLoader__.load({
 			const { payload, busy, refresh } = useSummary(settings.refreshSeconds)
 			if (settings.surface !== 'both' && settings.surface !== 'bottom') return null
 			const view = present(payload, settings, t, 'bottom')
-			const label = view.amount ?? view.idle
+			// key 查不通时，整条显示成红色原因，而不是留一个「余额不可用」让人猜。
+			const label = view.amount ?? (view.failed ? translate(t, 'balance.keyUnavailable') : view.idle)
 			return h('div', { className: 'dshBaifanBalance_anchor' },
 				h('style', null, CSS),
 				h('button', {
@@ -1009,6 +1016,7 @@ window.__ModuleLoader__.load({
 						'balance.scope.account': '账户余额',
 						'balance.mark.token': 'key额度',
 						'balance.mark.account': '账户',
+						'balance.keyUnavailable': 'key 查不到',
 					},
 					en: {
 						'balance.loading': 'Checking…',
@@ -1024,6 +1032,7 @@ window.__ModuleLoader__.load({
 						'balance.scope.account': 'Account balance',
 						'balance.mark.token': 'Key quota',
 						'balance.mark.account': 'Account',
+						'balance.keyUnavailable': 'Key unavailable',
 					},
 				}), 'baifan-balance: locale')
 

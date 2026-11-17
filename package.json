@@ -1,6 +1,6 @@
 {
   "name": "dsh-baifan-balance",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "private": false,
   "description": "Shows the Dabaifan (Baifan API, new-api) relay credit in a composer statistics entry and above the sidebar avatar, with placement, refresh, density, accent and low-balance settings.",
   "type": "module",
