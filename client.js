@@ -371,6 +371,31 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_notes{display:flex;flex-direction:column;gap:4px;padding-top:8px;
   border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dshBaifanBalanceSet_notesCode{font-family:var(--dsw-font-family-code,ui-monospace,monospace)}
+.dshBaifanBalanceSet_board{display:flex;flex-direction:column;gap:12px;padding-top:8px;
+  border-top:1px solid var(--dsw-alias-border-l1)}
+.dshBaifanBalanceSet_stats{display:flex;gap:20px;flex-wrap:wrap}
+.dshBaifanBalanceSet_stat{display:flex;flex-direction:column;gap:1px}
+.dshBaifanBalanceSet_statValue{font-size:16px;font-weight:600;color:var(--dsw-alias-label-primary);
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.dshBaifanBalanceSet_statLabel{font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.dshBaifanBalanceSet_bars{display:flex;align-items:flex-end;gap:6px;height:70px}
+.dshBaifanBalanceSet_barCol{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.dshBaifanBalanceSet_barTrack{width:100%;display:flex;align-items:flex-end;height:48px}
+.dshBaifanBalanceSet_bar{width:100%;border-radius:3px 3px 0 0;background:var(--dsw-alias-brand-primary);opacity:.8}
+.dshBaifanBalanceSet_barLabel{font-size:10px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+.dshBaifanBalanceSet_modelRow{display:flex;align-items:center;gap:8px;font-size:12px}
+.dshBaifanBalanceSet_modelName{width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--dsw-alias-label-secondary)}
+.dshBaifanBalanceSet_modelTrack{flex:1;height:7px;border-radius:4px;background:var(--dsw-alias-bg-layer-2);overflow:hidden}
+.dshBaifanBalanceSet_modelFill{height:100%;background:var(--dsw-alias-brand-primary);opacity:.75}
+.dshBaifanBalanceSet_modelAmount{font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}
+.dshBaifanBalanceSet_recent{display:flex;flex-direction:column;gap:3px;font-size:12px;
+  color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.dshBaifanBalanceSet_recentRow{display:flex;gap:8px;align-items:baseline}
+.dshBaifanBalanceSet_recentTime{width:44px;flex:none}
+.dshBaifanBalanceSet_recentModel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--dsw-alias-label-secondary)}
+.dshBaifanBalanceSet_recentAmount{flex:none}
 .dshBaifanBalanceSet_primary,.dshBaifanBalanceSet_secondary{height:30px;padding:0 12px;font:inherit;
   border-radius:var(--dsw-radius-sm);cursor:pointer}
 .dshBaifanBalanceSet_primary{border:1px solid transparent;background:var(--dsw-alias-brand-primary);
@@ -417,6 +442,8 @@ window.__ModuleLoader__.load({
 			const [message, setMessage] = useState(undefined)
 			const [busy, setBusy] = useState(false)
 			const [reading, setReading] = useState(undefined)
+			const [usage, setUsage] = useState(undefined)
+			const [usageBusy, setUsageBusy] = useState(false)
 			const alive = useRef(true)
 			// 订阅共享读数：据它判断当前 key 是不是「只能查 key 额度」。
 			const live = useSummary(DEFAULT_SETTINGS.refreshSeconds)
@@ -516,6 +543,7 @@ window.__ModuleLoader__.load({
 				} finally {
 					if (alive.current) setBusy(false)
 				}
+				void loadUsage()
 			}, [])
 
 			/** 一键把当前 key 的「允许查询用户额度」打开，之后 sk- 就能直接看到账户余额。 */
@@ -546,6 +574,75 @@ window.__ModuleLoader__.load({
 					if (alive.current) setBusy(false)
 				}
 			}, [load])
+
+			/** 拉一次用量看板数据。 */
+			const loadUsage = useCallback(async () => {
+				setUsageBusy(true)
+				try {
+					const response = await fetch('/baifan-balance/usage?days=7', { headers: { accept: 'application/json' } })
+					const data = await response.json()
+					if (alive.current) setUsage(data)
+				} catch (error) {
+					if (alive.current) setUsage({ ok: false, error: error instanceof Error ? error.message : String(error) })
+				} finally {
+					if (alive.current) setUsageBusy(false)
+				}
+			}, [])
+
+			useEffect(() => { void loadUsage() }, [loadUsage])
+
+			/** 用量看板：概览 + 每日柱状 + 模型占比 + 最近请求。 */
+			const board = (data) => {
+				const maxDay = Math.max(...data.daily.map((day) => day.amount), 0.000001)
+				const maxModel = Math.max(...data.models.map((item) => item.amount), 0.000001)
+				return h('div', { className: 'dshBaifanBalanceSet_board' },
+					h('div', { className: 'dshBaifanBalanceSet_stats' },
+						h('div', { className: 'dshBaifanBalanceSet_stat' },
+							h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.amount, data.currency)),
+							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, `近 ${data.days} 天消耗`)),
+						h('div', { className: 'dshBaifanBalanceSet_stat' },
+							h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(data.totals.count)),
+							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '请求数')),
+						h('div', { className: 'dshBaifanBalanceSet_stat' },
+							h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.average, data.currency)),
+							h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '平均每次'))),
+					data.daily.length === 0
+						? h('span', { className: 'dshBaifanBalanceSet_hint' }, '这段时间没有消费记录')
+						: h('div', { className: 'dshBaifanBalanceSet_bars' },
+							data.daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
+								h('div', { className: 'dshBaifanBalanceSet_barTrack' },
+									h('div', {
+										className: 'dshBaifanBalanceSet_bar',
+										style: { height: `${Math.max(3, (day.amount / maxDay) * 48)}px` },
+										title: `${day.date}　${formatMoney(day.amount, data.currency)}　${day.count} 次`,
+									})),
+								h('span', { className: 'dshBaifanBalanceSet_barLabel' }, day.date.slice(5))))),
+					data.models.length === 0
+						? null
+						: h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+							data.models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
+								h('span', { className: 'dshBaifanBalanceSet_modelName', title: item.model }, item.model),
+								h('div', { className: 'dshBaifanBalanceSet_modelTrack' },
+									h('div', {
+										className: 'dshBaifanBalanceSet_modelFill',
+										style: { width: `${Math.max(2, (item.amount / maxModel) * 100)}%` },
+									})),
+								h('span', { className: 'dshBaifanBalanceSet_modelAmount' },
+									`${formatMoney(item.amount, data.currency)} · ${item.count} 次`)))),
+					data.recent.length === 0
+						? null
+						: h('div', { className: 'dshBaifanBalanceSet_recent' },
+							data.recent.map((item, index) => h('div', {
+								className: 'dshBaifanBalanceSet_recentRow',
+								key: `${item.at}-${index}`,
+							},
+							h('span', { className: 'dshBaifanBalanceSet_recentTime' }, formatClock(item.at)),
+							h('span', {
+								className: 'dshBaifanBalanceSet_recentModel',
+								title: `${item.token} · ${item.prompt_tokens}→${item.completion_tokens} tok · ${item.use_time}s`,
+							}, item.model),
+							h('span', { className: 'dshBaifanBalanceSet_recentAmount' }, formatMoney(item.amount, data.currency))))))
+			}
 
 			const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
 			const loading = info === undefined
@@ -714,6 +811,16 @@ window.__ModuleLoader__.load({
 						value: form.lowBalanceKey,
 						onChange: update('lowBalanceKey'),
 					}))),
+
+				h('div', { className: 'dshBaifanBalanceSet_group' },
+					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '用量看板 · 近 7 天'),
+					usage === undefined
+						? h('div', { className: 'dshBaifanBalanceSet_notes' },
+							h('span', null, usageBusy ? '正在读取…' : '暂无数据'))
+						: usage.ok !== true
+							? h('div', { className: 'dshBaifanBalanceSet_notes' },
+								h('span', null, String(usage.error ?? '用量数据暂时不可用')))
+							: board(usage)),
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '其他入口'),
