@@ -60,14 +60,6 @@ window.__ModuleLoader__.load({
 			return time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
 		}
 
-		function formatTokenCount(value) {
-			const n = Number(value) || 0
-			if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`
-			if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`
-			if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`
-			return String(n)
-		}
-
 		/** 强调色只影响图标颜色，正文始终跟随主题。 */
 		function accentOf(accent) {
 			if (accent === 'brand') return 'var(--dsw-alias-brand-primary)'
@@ -653,22 +645,24 @@ window.__ModuleLoader__.load({
 
 			/** 用量看板：概览 + 每日柱状 + 模型占比 + 最近请求。 */
 			const board = (data) => {
-				const maxDay = Math.max(...data.daily.map((day) => day.amount), 0.000001)
-				const maxModel = Math.max(...data.models.map((item) => item.amount), 0.000001)
+				// 接口理论上总是给数组，但缺字段时不能让整页崩掉。
+				const daily = Array.isArray(data.daily) ? data.daily : []
+				const models = Array.isArray(data.models) ? data.models : []
+				const recent = Array.isArray(data.recent) ? data.recent : []
+				const totals = data.totals ?? { amount: 0, count: 0, average: 0 }
+				const maxDay = Math.max(...daily.map((day) => day.amount), 0.000001)
+				const maxModel = Math.max(...models.map((item) => item.amount), 0.000001)
 				const barColor = chartColor(form.accent)
 
 				const stats = h('div', { className: 'dshBaifanBalanceSet_stats' },
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
-						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.amount, data.currency)),
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(totals.amount, data.currency)),
 						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, `近 ${data.days} 天消耗`)),
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
-						h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(data.totals.count)),
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, String(totals.count)),
 						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '请求数')),
 					h('div', { className: 'dshBaifanBalanceSet_stat' },
-						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatTokenCount(data.totals.tokens)),
-						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, 'tokens')),
-					h('div', { className: 'dshBaifanBalanceSet_stat' },
-						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(data.totals.average, data.currency)),
+						h('span', { className: 'dshBaifanBalanceSet_statValue' }, formatMoney(totals.average, data.currency)),
 						h('span', { className: 'dshBaifanBalanceSet_statLabel' }, '平均每次')))
 
 				const barLabel = (amount) => {
@@ -678,7 +672,7 @@ window.__ModuleLoader__.load({
 					return ''
 				}
 
-				const bars = data.daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
+				const bars = daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
 					h('span', { className: 'dshBaifanBalanceSet_barValue' }, barLabel(day.amount)),
 					h('div', {
 						className: 'dshBaifanBalanceSet_bar',
@@ -693,11 +687,11 @@ window.__ModuleLoader__.load({
 
 				const chartBlock = h('div', { className: 'dshBaifanBalanceSet_block' },
 					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '每日消耗'),
-					data.daily.length === 0
+					daily.length === 0
 						? h('span', { className: 'dshBaifanBalanceSet_hint' }, '这段时间没有消费记录')
 						: h('div', { className: 'dshBaifanBalanceSet_chart' }, bars))
 
-				const modelRows = data.models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
+				const modelRows = models.map((item) => h('div', { className: 'dshBaifanBalanceSet_modelRow', key: item.model },
 					h('div', {
 						className: 'dshBaifanBalanceSet_modelFillBg',
 						style: { width: `${Math.max(1, (item.amount / maxModel) * 100)}%`, background: barColor },
@@ -706,11 +700,11 @@ window.__ModuleLoader__.load({
 					h('span', { className: 'dshBaifanBalanceSet_modelAmount' }, formatMoney(item.amount, data.currency)),
 					h('span', { className: 'dshBaifanBalanceSet_modelCount' }, `${item.count} 次`)))
 
-				const modelBlock = data.models.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
+				const modelBlock = models.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
 					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '按模型'),
 					h('div', { className: 'dshBaifanBalanceSet_modelList' }, modelRows))
 
-				const recentRows = data.recent.map((item, index) => h('div', {
+				const recentRows = recent.map((item, index) => h('div', {
 					className: 'dshBaifanBalanceSet_recentRow',
 					key: `${item.at}-${index}`,
 				},
@@ -721,7 +715,7 @@ window.__ModuleLoader__.load({
 				}, item.model),
 				h('span', { className: 'dshBaifanBalanceSet_recentAmount' }, formatMoney(item.amount, data.currency))))
 
-				const recentBlock = data.recent.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
+				const recentBlock = recent.length === 0 ? null : h('div', { className: 'dshBaifanBalanceSet_block' },
 					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '最近请求'),
 					h('div', { className: 'dshBaifanBalanceSet_recent' }, recentRows))
 
@@ -963,7 +957,7 @@ window.__ModuleLoader__.load({
 						h('span', { className: 'dshBaifanBalanceSet_boardSummary' },
 							usage === undefined
 								? (usageBusy ? '正在读取…' : '—')
-								: (usage.ok === true
+								: (usage.ok === true && usage.totals !== undefined
 									? `近 ${usage.days} 天　${formatMoney(usage.totals.amount, usage.currency)}　${usage.totals.count} 次`
 									: '不可用'))),
 						boardOpen
