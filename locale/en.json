@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Dabaifan balance",
-    "description": "Shows the Dabaifan relay credit (Baifan API) in the statistics row under the composer and above the sidebar avatar, with settings for placement, refresh interval, information density, accent color, icon visibility and a low-balance alert line. Both refresh automatically, re-query on click, and reveal full detail on hover. Also adds a relay_balance tool and a /balance command. Needs an sk- API key or an access token set on the settings page."
+    "description": "Shows the Dabaifan relay credit (Baifan API) in the statistics row under the composer and above the sidebar avatar: the avatar side is the account balance, the composer side is the current api key's quota, and the two never overwrite each other. Settings cover placement, refresh interval, information density, accent color, icon visibility and a low-balance alert line; both refresh automatically, re-query on click, and reveal full detail on hover. Also adds a /balance command (including today/week usage) and a collapsed usage board. Needs an access token (account balance) or an api key (per-key quota) set on the settings page."
   }
 }

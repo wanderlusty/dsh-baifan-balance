@@ -24,7 +24,6 @@ window.__ModuleLoader__.load({
 			lowBalanceAccount: 1,
 			lowBalanceKey: 1,
 			autoDetectKey: true,
-			autoDetectRef: '',
 		}
 
 		const FALLBACK = {
@@ -42,6 +41,8 @@ window.__ModuleLoader__.load({
 			'balance.mark.token': 'key额度',
 			'balance.mark.account': '账户',
 			'balance.keyUnavailable': 'key 查不到',
+			'balance.where.avatar': '左下角',
+			'balance.where.bottom': '输入框下方',
 		}
 
 		function translate(t, key) {
@@ -58,6 +59,27 @@ window.__ModuleLoader__.load({
 			const time = new Date(iso)
 			if (Number.isNaN(time.getTime())) return ''
 			return time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+		}
+
+		function localDateKey(offsetDays) {
+			const day = new Date()
+			day.setDate(day.getDate() + offsetDays)
+			return day.toLocaleDateString('sv-SE')
+		}
+
+		/** 折叠时也要能一眼看到今天/昨天花了多少；按日期取值，避免跨天后误标。 */
+		function boardSummaryText(usage, usageBusy) {
+			if (usage === undefined) return usageBusy ? '正在读取…' : '—'
+			if (usage.ok !== true || usage.totals === undefined) return '不可用'
+			const range = `近 ${usage.days} 天　${formatMoney(usage.totals.amount, usage.currency)}　${usage.totals.count} 次`
+			const daily = Array.isArray(usage.daily) ? usage.daily : []
+			const byDate = new Map(daily.map((day) => [day.date, day]))
+			const quick = []
+			for (const [label, offset] of [['今日', 0], ['昨日', -1]]) {
+				const day = byDate.get(localDateKey(offset))
+				if (day !== undefined) quick.push(`${label} ${formatMoney(day.amount, usage.currency)}`)
+			}
+			return quick.length === 0 ? range : `${quick.join('　')}　·　${range}`
 		}
 
 		/** 强调色只影响图标颜色，正文始终跟随主题。 */
@@ -211,8 +233,10 @@ window.__ModuleLoader__.load({
 		}
 
 		/** 把一次读数压成提示语；detail 决定给多少内容。 */
-		function describe(reading, t, detail) {
-			const parts = [reading.site]
+		function describe(reading, t, detail, surface) {
+			const parts = []
+			if (surface !== undefined) parts.push(translate(t, surface === 'avatar' ? 'balance.where.avatar' : 'balance.where.bottom'))
+			parts.push(reading.site)
 			if (detail !== 'compact') parts.push(scopeOf(reading, t))
 			parts.push(reading.unlimited === true
 				? translate(t, 'balance.unlimited')
@@ -239,7 +263,7 @@ window.__ModuleLoader__.load({
 			const threshold = reading?.scope === 'account' ? settings.lowBalanceAccount : settings.lowBalanceKey
 			const low = ok && !unlimited && threshold > 0 && reading.remaining < threshold
 			let description
-			if (ok) description = describe(reading, t, settings.detail)
+			if (ok) description = describe(reading, t, settings.detail, surface)
 			else if (payload === undefined) description = translate(t, 'balance.loading')
 			else description = String(error ?? payload.error ?? translate(t, 'balance.unavailable'))
 
@@ -478,7 +502,6 @@ window.__ModuleLoader__.load({
 				lowBalanceAccount: '1',
 				lowBalanceKey: '1',
 				autoDetectKey: DEFAULT_SETTINGS.autoDetectKey,
-				autoDetectRef: DEFAULT_SETTINGS.autoDetectRef,
 			})
 			const [info, setInfo] = useState(undefined)
 			// 载入时的快照：用来判断哪个字段被改过，改过才显示行内「保存」。
@@ -526,7 +549,6 @@ window.__ModuleLoader__.load({
 						lowBalanceAccount: String(settings.lowBalanceAccount ?? 0),
 						lowBalanceKey: String(settings.lowBalanceKey ?? 0),
 						autoDetectKey: settings.autoDetectKey !== false,
-						autoDetectRef: settings.autoDetectRef ?? '',
 					}
 					setForm(next)
 					setInitial(next)
@@ -838,8 +860,8 @@ window.__ModuleLoader__.load({
 						'头像上方显示的就是它',
 					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
 
-					row('baifan-auto-detect', '自动检测当前使用 key 的限额', [
-						'页面下方显示的就是这条 key',
+					row('baifan-auto-detect', '自动跟随 DSH 当前使用的 key', [
+						'页面下方显示的就是这条 key 的额度',
 						'如果这条 key 在站点里开了「允许查询用户额度」，这里会直接显示账户余额',
 						keySlot?.configured === true
 							? `当前生效：${keySlot.ref ? `取自 ${keySlot.ref}，` : ''}末四位 ${keySlot.tail}`
@@ -853,18 +875,12 @@ window.__ModuleLoader__.load({
 					})),
 
 					// DSH 里可能同时存了好几条提供商的 key，让用户选准是哪条。
-					form.autoDetectKey && (info?.autoRefs?.length ?? 0) > 0
-						? row('baifan-auto-ref', '自动检测用哪条凭据', '选错了会显示另一条 key 的额度，选中即生效', h('select', {
-							id: 'baifan-auto-ref',
-							className: 'dshBaifanBalanceSet_input',
-							value: form.autoDetectRef,
-							onChange: (event) => {
-								setForm({ ...form, autoDetectRef: event.target.value })
-								void submit({ autoDetectRef: event.target.value })
-							},
-						},
-						h('option', { value: '' }, '自动（按默认顺序）'),
-						info.autoRefs.map((item) => h('option', { key: item.ref, value: item.ref }, `${item.ref}　…${item.tail}`))))
+					form.autoDetectKey && info?.provider !== undefined
+						? row('baifan-provider-info', '当前提供商', '自动检测据此决定用哪把 key', h('span', {
+							id: 'baifan-provider-info',
+							className: 'dshBaifanBalanceSet_hint',
+							style: { textAlign: 'right' },
+						}, info.provider.id + (info.provider.name === undefined ? '' : '（' + info.provider.name + '）')))
 						: null,
 
 					form.autoDetectKey === false
@@ -876,7 +892,10 @@ window.__ModuleLoader__.load({
 
 				h('div', { className: 'dshBaifanBalanceSet_group' },
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '显示与个性化'),
-					row('baifan-surface', '显示位置', '选中即生效', h('select', {
+					row('baifan-surface', '显示位置', [
+						'头像上方 = 账户余额，页面下方 = key 额度',
+						'两者是不同口径，不会互相覆盖；选中即生效',
+					], h('select', {
 						id: 'baifan-surface',
 						className: 'dshBaifanBalanceSet_input',
 						value: form.surface,
@@ -954,12 +973,7 @@ window.__ModuleLoader__.load({
 						},
 						h('span', { className: 'dshBaifanBalanceSet_chevron' }, boardOpen ? '▾' : '▸'),
 						h('span', { className: 'dshBaifanBalanceSet_boardTitle' }, '用量看板'),
-						h('span', { className: 'dshBaifanBalanceSet_boardSummary' },
-							usage === undefined
-								? (usageBusy ? '正在读取…' : '—')
-								: (usage.ok === true && usage.totals !== undefined
-									? `近 ${usage.days} 天　${formatMoney(usage.totals.amount, usage.currency)}　${usage.totals.count} 次`
-									: '不可用'))),
+						h('span', { className: 'dshBaifanBalanceSet_boardSummary' }, boardSummaryText(usage, usageBusy))),
 						boardOpen
 							? h('div', { className: 'dshBaifanBalanceSet_segmented' },
 								[7, 14, 30].map((days) => h('button', {
@@ -986,7 +1000,8 @@ window.__ModuleLoader__.load({
 						h('span', null, '对话里问「我余额还剩多少」→ 助手会调用 relay_balance 工具'),
 						h('span', null, '输入框敲 /balance 直接出结果，不走模型、不耗 token'),
 						h('span', null, '/balance 后面可加 account 或 key 指定口径，不带参数＝自动选择'),
-						h('span', null, '两者都能临时传一个别的凭据来查，不会改动这里的设置'))),
+						h('span', null, '/balance today / week 直接看今日或近 7 天用量（需访问令牌，按自然日统计）'),
+						h('span', null, '余额查询可临时传一个别的凭据，不会改动设置；用量查询用这里保存的访问令牌'))),
 
 				h('div', { className: 'dshBaifanBalanceSet_actions' },
 					h('button', { type: 'button', className: 'dshBaifanBalanceSet_secondary', onClick: probe, disabled: busy }, '测试查询'),
@@ -1042,6 +1057,8 @@ window.__ModuleLoader__.load({
 						'balance.mark.token': 'key额度',
 						'balance.mark.account': '账户',
 						'balance.keyUnavailable': 'key 查不到',
+						'balance.where.avatar': '左下角',
+						'balance.where.bottom': '输入框下方',
 					},
 					en: {
 						'balance.loading': 'Checking…',
@@ -1058,6 +1075,8 @@ window.__ModuleLoader__.load({
 						'balance.mark.token': 'Key quota',
 						'balance.mark.account': 'Account',
 						'balance.keyUnavailable': 'Key unavailable',
+						'balance.where.avatar': 'Sidebar footer',
+						'balance.where.bottom': 'Under composer',
 					},
 				}), 'baifan-balance: locale')
 

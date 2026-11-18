@@ -73,6 +73,8 @@ git clone https://github.com/wanderlusty/dsh-baifan-balance.git
 | key 额度提醒 | key 额度低于该值变红，填 0 关闭（默认 1） |
 | 自动检测当前使用 key 的限额 | 关掉后页面下方只用手动填的 api key |
 
+用量看板默认**折叠**，标题行直接显示**今日 / 昨日**花了多少，后面跟着所选天数的总量与请求数；展开后可选 7 / 14 / 30 天。统计按自然日（今天 0 点起算），需要访问令牌。
+
 ---
 
 ## 关于「无限制」
@@ -87,21 +89,27 @@ git clone https://github.com/wanderlusty/dsh-baifan-balance.git
 
 | 入口 | 用法 |
 | --- | --- |
-| `relay_balance` 工具 | 对话里问「我余额还剩多少」，助手会调用；可带 `channel`（account / key） |
-| `/balance` | 输入框敲，不走模型、不耗 token、结果只给你看 |
+| `/balance` | 输入框敲，不走模型、不耗 token、结果只给你看；自动选口径 |
 | `/balance account` | 强制账户口径 |
 | `/balance key` | 强制 key 口径 |
+| `/balance today` | 今日消耗与请求数（按自然日，需要访问令牌） |
+| `/balance week` | 近 7 天消耗，附每日一行（同上） |
 
-工具和命令都能临时传一个别的凭据来查，不会改动设置页里的配置。
+`today` / `week` 用**访问令牌**（站点用量接口是账号级的，`sk-` 查不到历史）。
+
+> 早期版本还提供过一个 `relay_balance` 工具（让模型在对话里代查余额）。1.20.0 起移除：界面上的两个数字已经常驻可见，模型再代查一次只是多花 token。
 
 ---
 
 ## 凭据从哪来
 
-优先级：插件配置 → 设置页保存的记录 → 本地 `secret.json` → 环境变量 → 自动检测。
+优先级：插件配置 → 设置页保存的记录 → 环境变量 → 自动检测。
+
+自动检测不再按固定顺序猜，而是**跟随 DSH 当前（默认）提供商的 `apiKeyEnv`**：读 `llm` 的提供商列表 + `settings` 投影拿到 `apiKeyEnv`，再用它去凭据服务取真实 key。读不到提供商信息时，才退回按常见引用名依次尝试。
 
 - 账户口径：`BAIFAN_ACCESS_TOKEN` / `NEWAPI_ACCESS_TOKEN`
-- key 口径：`DABAIFAN_API_KEY` / `BAIFAN_API_KEY`，以及凭据服务里 `DABAIFAN_API_KEY` 等引用
+- key 口径：`DABAIFAN_API_KEY` / `BAIFAN_API_KEY` 等（仅作兜底）
+- 早期版本还有「本包目录下 `secret.json`」这一层，1.20.0 已移除——它只服务开发机，分发时忘删就是泄密
 
 ---
 
