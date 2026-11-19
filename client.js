@@ -672,6 +672,7 @@ window.__ModuleLoader__.load({
 				const models = Array.isArray(data.models) ? data.models : []
 				const recent = Array.isArray(data.recent) ? data.recent : []
 				const totals = data.totals ?? { amount: 0, count: 0, average: 0 }
+				// 柱子永远按完整天数画，绝不裁剪——30 天就是 30 根。
 				const maxDay = Math.max(...daily.map((day) => day.amount), 0.000001)
 				const maxModel = Math.max(...models.map((item) => item.amount), 0.000001)
 				const barColor = chartColor(form.accent)
@@ -694,8 +695,8 @@ window.__ModuleLoader__.load({
 					return ''
 				}
 
-				// 日期/金额标签的密度：柱子多时隔几根显示一根，避免文字叠在一起。
-				const labelStep = daily.length <= 7 ? 1 : (daily.length <= 14 ? 2 : 3)
+				// 只抽稀标签，不抽稀柱子：7/14 天每根都标，30 天每 3 根标一个。
+				const labelStep = daily.length > 20 ? 3 : 1
 				const bars = daily.map((day, dayIndex) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
 					h('span', { className: 'dshBaifanBalanceSet_barValue' }, dayIndex % labelStep === 0 ? barLabel(day.amount) : ''),
 					h('div', {
