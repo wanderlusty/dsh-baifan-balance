@@ -1,12 +1,16 @@
-# dsh-baifan-balance 插件层：把「查余额」Host 插件挂进当前 profile。
+# dsh-baifan-balance 插件层：把「大白饭余额」Host 插件挂进当前 profile。
 # 装好后 DSH 每次启动都会自动加载，应用更新不会冲掉。
 #
 # 想改配置，就在 profile 自己的 cordis.patch.yml 里按 id 覆盖，例如：
 #   - id: baifan-balance
 #     config:
 #       baseUrl: "https://baifanapi.awstme.top"   # 站点根地址，不带 /v1
-#       key: ""            # 默认凭据：sk- 推理密钥 或 访问令牌；留空则读 secret.json / 环境变量
-#       timeoutMs: 15000   # 单次查询超时（毫秒）
+#       surface: both                            # both / avatar / bottom / hidden
+#       refreshSeconds: 60                       # 自动刷新间隔（秒）
+#       lowBalanceAccount: 1                     # 账户余额告警线，0 关闭
+#       lowBalanceKey: 1                         # key 额度告警线，0 关闭
+#       autoDetectKey: true                      # 自动跟随 DSH 当前提供商的 api key
+# 凭据请到「头像 → 设置 → 大白饭余额」里填，不要写在这里。
 - insert:
     - id: baifan-balance
       name: dsh-baifan-balance
