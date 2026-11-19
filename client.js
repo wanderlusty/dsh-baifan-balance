@@ -438,11 +438,13 @@ window.__ModuleLoader__.load({
 .dshBaifanBalanceSet_barCol{flex:1;display:flex;flex-direction:column;align-items:center;
   justify-content:flex-end;gap:3px;min-width:0;height:100%}
 .dshBaifanBalanceSet_barValue{font-size:9px;line-height:1;color:var(--dsw-alias-label-tertiary);
-  font-variant-numeric:tabular-nums;height:10px}
+  font-variant-numeric:tabular-nums;height:10px;line-height:10px;flex:none;display:block}
 .dshBaifanBalanceSet_bar{width:100%;max-width:26px;border-radius:3px 3px 0 0;
   background:var(--dsw-alias-brand-primary);opacity:.85}
 .dshBaifanBalanceSet_bar[data-empty=true]{background:var(--dsw-alias-border-l1);opacity:.7}
-.dshBaifanBalanceSet_barLabel{font-size:10px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+/* 固定高度：空串标签也占同样高度，否则有文字的列会把整堆顶高，标签就沉下去、对不齐。 */
+.dshBaifanBalanceSet_barLabel{font-size:10px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;
+  height:14px;line-height:14px;flex:none;display:block}
 .dshBaifanBalanceSet_modelRow{position:relative;display:flex;align-items:center;gap:10px;
   padding:3px 6px;border-radius:4px;overflow:hidden;font-size:12px;line-height:1.5}
 .dshBaifanBalanceSet_modelList{display:flex;flex-direction:column;gap:2px}
@@ -698,7 +700,7 @@ window.__ModuleLoader__.load({
 				// 只抽稀标签，不抽稀柱子：7/14 天每根都标，30 天每 3 根标一个。
 				const labelStep = daily.length > 20 ? 3 : 1
 				const bars = daily.map((day, dayIndex) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
-					h('span', { className: 'dshBaifanBalanceSet_barValue' }, dayIndex % labelStep === 0 ? barLabel(day.amount) : ''),
+					h('span', { className: 'dshBaifanBalanceSet_barValue' }, barLabel(day.amount)),
 					h('div', {
 						className: 'dshBaifanBalanceSet_bar',
 						'data-empty': day.amount <= 0 ? 'true' : 'false',
@@ -859,13 +861,13 @@ window.__ModuleLoader__.load({
 					h('span', { className: 'dshBaifanBalanceSet_groupTitle' }, '余额显示'),
 					row('baifan-access-token', '访问令牌（账户口径）', [
 						slotHint(accountSlot, loading),
-						{ text: '账户完整余额', strong: true },
-						'头像上方显示的就是它',
+						{ text: '账户余额（优先用 key 查；用量看板必须用访问令牌）', strong: true },
+						'头像上方显示账户余额；开了「允许查询用户额度」的 key 就能查',
 					], credentialField('baifan-access-token', form.accessToken, 'accessToken', '留空不改动'), true),
 
 					row('baifan-auto-detect', '自动跟随 DSH 当前使用的 key', [
-						'页面下方显示的就是这条 key 的额度',
-						'如果这条 key 在站点里开了「允许查询用户额度」，这里会直接显示账户余额',
+						'页面下方显示这条 key 自己的额度；头像上方显示账户余额',
+						'两者口径不同，不会互相覆盖',
 						keySlot?.configured === true
 							? `当前生效：${keySlot.ref ? `取自 ${keySlot.ref}，` : ''}末四位 ${keySlot.tail}`
 							: undefined,
