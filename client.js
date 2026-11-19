@@ -694,8 +694,10 @@ window.__ModuleLoader__.load({
 					return ''
 				}
 
-				const bars = daily.map((day) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
-					h('span', { className: 'dshBaifanBalanceSet_barValue' }, barLabel(day.amount)),
+				// 日期/金额标签的密度：柱子多时隔几根显示一根，避免文字叠在一起。
+				const labelStep = daily.length <= 7 ? 1 : (daily.length <= 14 ? 2 : 3)
+				const bars = daily.map((day, dayIndex) => h('div', { className: 'dshBaifanBalanceSet_barCol', key: day.date },
+					h('span', { className: 'dshBaifanBalanceSet_barValue' }, dayIndex % labelStep === 0 ? barLabel(day.amount) : ''),
 					h('div', {
 						className: 'dshBaifanBalanceSet_bar',
 						'data-empty': day.amount <= 0 ? 'true' : 'false',
@@ -705,7 +707,7 @@ window.__ModuleLoader__.load({
 						},
 						title: `${day.date}　${formatMoney(day.amount, data.currency)}　${day.count} 次`,
 					}),
-					h('span', { className: 'dshBaifanBalanceSet_barLabel' }, day.date.slice(5))))
+					h('span', { className: 'dshBaifanBalanceSet_barLabel' }, dayIndex % labelStep === 0 ? day.date.slice(5) : '')))
 
 				const chartBlock = h('div', { className: 'dshBaifanBalanceSet_block' },
 					h('span', { className: 'dshBaifanBalanceSet_blockLabel' }, '每日消耗'),
